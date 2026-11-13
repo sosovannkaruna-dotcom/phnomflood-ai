@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Circle, MapContainer, Polygon, TileLayer, Tooltip, useMap } from 'react-leaflet'
+import { Circle, CircleMarker, MapContainer, Polygon, TileLayer, Tooltip, useMap } from 'react-leaflet'
 import FloodLayer from '../map/FloodLayer'
 import { DRAIN_HEAT_POINTS, ELEVATION_ZONES } from '../../data/seed'
 
@@ -61,6 +61,17 @@ export default function RiskMap({ reports, queue, layers, focus }) {
         {layers.heat && heat.map(([lat, lng, weight]) => <HeatBlob key={`${lat}-${lng}`} lat={lat} lng={lng} weight={weight} />)}
 
         {layers.pins && <FloodLayer reports={reports} />}
+
+        {/* Ticket selected in the queue */}
+        {focus && (
+          <CircleMarker
+            key={focus.id}
+            center={[focus.lat, focus.lng]}
+            radius={20}
+            pathOptions={{ color: '#0284C7', weight: 3, fillColor: '#0284C7', fillOpacity: 0.12 }}
+            interactive={false}
+          />
+        )}
       </MapContainer>
     </div>
   )

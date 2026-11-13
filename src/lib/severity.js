@@ -63,6 +63,7 @@ export const VEHICLES = {
   moto: {
     id: 'moto',
     label: 'Motorbike',
+    short: 'Motorbike',
     noun: 'motorbike',
     blockRank: 2,
     cautionRank: 1,
@@ -71,6 +72,7 @@ export const VEHICLES = {
   tuktuk: {
     id: 'tuktuk',
     label: 'PassApp / Tuk-Tuk',
+    short: 'Tuk-Tuk',
     noun: 'tuk-tuk',
     blockRank: 2,
     cautionRank: 2,
@@ -79,6 +81,7 @@ export const VEHICLES = {
   car: {
     id: 'car',
     label: 'Car / SUV',
+    short: 'Car / SUV',
     noun: 'car',
     blockRank: 3,
     cautionRank: 2,

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Plus, X } from 'lucide-react'
 import PhoneFrame from './PhoneFrame'
 import CitizenMap from './CitizenMap'
-import RoutePlanner from './RoutePlanner'
+import RoutePlanner, { VehicleSwitch } from './RoutePlanner'
 import RouteSummary, { describePlan } from './RouteSummary'
 import ReportDrawer from './ReportDrawer'
 import Toasts from './Toasts'
@@ -136,7 +136,7 @@ export default function CitizenView() {
   }
 
   return (
-    <div className="flex h-full items-center justify-center overflow-hidden bg-[#E9EDF2] px-3 py-4">
+    <div className="flex h-full items-center justify-center overflow-hidden bg-slate-200 sm:px-3 sm:py-4">
       <PhoneFrame>
         <div className="relative min-h-0 flex-1 bg-canvas">
           {/* Full-bleed map */}
@@ -164,45 +164,45 @@ export default function CitizenView() {
           <Toasts toasts={toasts} />
 
           {pickMode ? (
-            <div className="absolute inset-x-3 top-3 z-20 flex items-center justify-between gap-2 rounded-xl border border-hairline bg-white px-3 py-2.5 text-[13px] font-medium text-ink shadow-float">
+            <div className="absolute inset-x-3 top-3 z-20 flex items-center justify-between gap-2 rounded-xl border border-hairline bg-white px-3 py-2 text-compact font-medium text-ink shadow-sm">
               Tap the map where the flood is
               <button
                 onClick={() => {
                   setPickMode(false)
                   setDrawerOpen(true)
                 }}
-                className="flex items-center gap-1 text-[13px] font-medium text-muted"
+                className="flex items-center gap-1 text-compact font-medium text-accent"
               >
-                <X className="h-3.5 w-3.5" /> Cancel
+                <X className="h-4 w-4" /> Cancel
               </button>
             </div>
           ) : (
             <div className="pointer-events-none absolute inset-x-3 top-3 z-10 space-y-2">
               <RoutePlanner presets={ROUTE_PRESETS} presetId={presetId} onPresetChange={setPresetId} />
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-hairline bg-white px-2.5 py-1 text-[11px] font-medium text-ink shadow-float">
-                <span className="h-1.5 w-1.5 rounded-full bg-caution" />
-                {weather.city}: {weather.alert} • {weather.rainMmPerHour}mm/hr
-              </span>
+              <VehicleSwitch vehicleId={vehicleId} onChange={setVehicleId} />
             </div>
           )}
 
           {!pickMode && (
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex flex-col items-end">
-              <button
-                onClick={openDrawer}
-                className="pointer-events-auto mb-3 mr-3 flex items-center gap-1.5 rounded-full bg-danger px-4 py-2.5 text-[13px] font-semibold text-white shadow-float transition hover:bg-red-600 active:scale-[0.98]"
-              >
-                <Plus className="h-4 w-4" strokeWidth={2.5} /> Report Flood
-              </button>
-              <div className="w-full">
-                <RouteSummary
-                  plan={plan}
-                  safeEntry={safeEntry}
-                  vehicleId={vehicleId}
-                  onVehicleChange={setVehicleId}
-                  recalculating={recalculating}
-                />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10">
+              <div className="flex items-end justify-between gap-2 px-3 pb-3">
+                {/* Live status only: rainfall alert and map credit */}
+                <div className="space-y-1">
+                  <span className="flex w-fit items-center gap-2 whitespace-nowrap rounded-md border border-hairline bg-white px-2 py-1 text-2xs font-semibold text-[#92400E] shadow-sm">
+                    <span className="h-2 w-2 animate-pulse rounded-full bg-caution" />
+                    {weather.alert} • {weather.rainMmPerHour}mm/hr
+                  </span>
+                  <span className="block w-fit rounded bg-white/90 px-1 text-2xs text-muted">© OpenStreetMap contributors</span>
+                </div>
+                {/* The one primary action on this screen */}
+                <button
+                  onClick={openDrawer}
+                  className="pointer-events-auto flex shrink-0 items-center gap-2 rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-700 active:scale-95"
+                >
+                  <Plus className="h-5 w-5" /> Report Flood
+                </button>
               </div>
+              <RouteSummary plan={plan} safeEntry={safeEntry} vehicleId={vehicleId} recalculating={recalculating} />
             </div>
           )}
 

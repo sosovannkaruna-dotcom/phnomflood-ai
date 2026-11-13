@@ -64,6 +64,31 @@ export const SEED_REPORTS = [
     source: 'monitor',
     minutesAgo: 4,
   },
+  // Two more reports away from the preset routes, so the map boots looking operational.
+  {
+    id: 'h-sensok',
+    name: 'Street 1986, Sen Sok',
+    area: 'St. 1986',
+    khan: 'Sen Sok',
+    sangkat: 'Phnom Penh Thmey',
+    lat: 11.5795,
+    lng: 104.8765,
+    depth: 'knee',
+    source: 'citizen',
+    minutesAgo: 17,
+  },
+  {
+    id: 'h-tompun',
+    name: 'Street 271 near Boeung Tompun',
+    area: 'St. 271',
+    khan: 'Mean Chey',
+    sangkat: 'Boeung Tompun',
+    lat: 11.5352,
+    lng: 104.9048,
+    depth: 'ankle',
+    source: 'rider',
+    minutesAgo: 26,
+  },
 ]
 
 // AI dispatch & maintenance queue: grates that flood repeatedly, even in moderate rain.

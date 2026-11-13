@@ -17,8 +17,8 @@ function MapController({ paths, fitKey, pickMode, onPick }) {
     // Capped so the routes still fit on short screens.
     const h = map.getSize().y
     map.fitBounds(boundsOf(paths), {
-      paddingTopLeft: [28, Math.min(110, h * 0.2)],
-      paddingBottomRight: [28, Math.min(260, h * 0.42)],
+      paddingTopLeft: [28, Math.min(110, h * 0.18)],
+      paddingBottomRight: [28, Math.min(170, h * 0.26)],
       animate: true,
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps

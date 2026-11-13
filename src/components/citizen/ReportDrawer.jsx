@@ -8,7 +8,7 @@ import {
   LocateFixed,
   Lock,
   MapPin,
-  ScanLine,
+  Loader2,
   TriangleAlert,
   Upload,
   WifiOff,
@@ -17,12 +17,14 @@ import {
 import { DEPTHS, REPORTABLE_DEPTHS } from '../../lib/severity'
 import { DEMO_SCENARIOS, analyzeFloodPhoto } from '../../services/visionAI'
 
+const SCAN_STEPS = ['Analyzing tire submersion...', 'Checking drainage database...', 'Finalizing verdict...']
+
 /** Image that degrades to a neutral placeholder instead of a broken icon. */
 function SafeImage({ src, alt, className }) {
   const [failed, setFailed] = useState(false)
   if (failed) {
     return (
-      <div className={`grid place-items-center bg-slate-100 text-slate-400 ${className}`}>
+      <div className={`grid place-items-center bg-slate-100 text-muted ${className}`}>
         <ImageOff className="h-5 w-5" />
       </div>
     )
@@ -43,6 +45,15 @@ export default function ReportDrawer({ location, usingCurrentPin, onUseCurrentPi
   const runId = useRef(0)
 
   const scroller = useRef(null)
+  const [step, setStep] = useState(0)
+
+  // Progressive status text while the photo is being analysed.
+  useEffect(() => {
+    if (scan !== 'scanning') return
+    setStep(0)
+    const timer = window.setInterval(() => setStep((s) => Math.min(s + 1, SCAN_STEPS.length - 1)), 520)
+    return () => window.clearInterval(timer)
+  }, [scan])
 
   useEffect(() => () => void runId.current++, [])
 
@@ -96,7 +107,7 @@ export default function ReportDrawer({ location, usingCurrentPin, onUseCurrentPi
         <div className="shrink-0 px-4 pt-2">
           <span className="mx-auto block h-1 w-9 rounded-full bg-slate-300" />
           <div className="flex items-center justify-between pb-2 pt-2.5">
-            <h2 className="text-[16px] font-semibold text-ink">Report a flood</h2>
+            <h2 className="text-base font-semibold text-ink">{location ? `Report flood on ${location.place.area}` : 'Report a street flood'}</h2>
             <button onClick={onClose} aria-label="Close" className="grid h-7 w-7 place-items-center rounded-full bg-slate-100 text-muted">
               <X className="h-4 w-4" />
             </button>
@@ -116,7 +127,7 @@ export default function ReportDrawer({ location, usingCurrentPin, onUseCurrentPi
               </Choice>
             </div>
             {location && (
-              <p className="mt-2 text-[12px] leading-snug text-muted">
+              <p className="mt-2 text-xs leading-snug text-muted">
                 <span className="font-medium text-ink">{location.place.name}</span>
                 <br />
                 Khan {location.place.khan} · Sangkat {location.place.sangkat}
@@ -130,7 +141,7 @@ export default function ReportDrawer({ location, usingCurrentPin, onUseCurrentPi
               How deep is the water?
               {verified && (
                 <span className="ml-auto flex items-center gap-1 font-medium normal-case tracking-normal text-muted">
-                  <Lock className="h-3 w-3" /> Set by AI
+                  <Lock className="h-4 w-4" /> Set by AI
                 </span>
               )}
             </Label>
@@ -145,13 +156,13 @@ export default function ReportDrawer({ location, usingCurrentPin, onUseCurrentPi
                     disabled={verified}
                     onClick={() => setUserDepth(id)}
                     className={`rounded-lg border px-1 py-2 text-center transition ${
-                      active ? 'border-ink bg-white' : 'border-hairline bg-white'
+                      active ? 'border-accent bg-white' : 'border-hairline bg-white'
                     } ${verified && !active ? 'opacity-50' : ''}`}
-                    style={active ? { boxShadow: 'inset 0 0 0 1px #0F172A' } : undefined}
+                    style={active ? { boxShadow: 'inset 0 0 0 1px #0284C7' } : undefined}
                   >
                     <span className="mx-auto mb-1 block h-1.5 w-6 rounded-full" style={{ background: d.color }} />
-                    <span className={`block text-[12px] font-semibold text-ink ${overruled ? 'line-through' : ''}`}>{d.label}</span>
-                    <span className="block text-[10px] text-muted">~{d.cm} cm</span>
+                    <span className={`block text-xs font-semibold text-ink ${overruled ? 'line-through' : ''}`}>{d.label}</span>
+                    <span className="block text-2xs text-muted">~{d.cm} cm</span>
                   </button>
                 )
               })}
@@ -171,63 +182,73 @@ export default function ReportDrawer({ location, usingCurrentPin, onUseCurrentPi
                       className="overflow-hidden rounded-lg border border-hairline bg-white text-left transition hover:border-slate-400"
                     >
                       <SafeImage src={s.image} alt={s.title} className="h-14 w-full object-cover" />
-                      <span className="block px-2 pb-1.5 pt-1">
-                        <span className="block text-[11px] font-semibold leading-tight text-ink">{s.title}</span>
-                        <span className="block text-[10px] leading-tight text-muted">{s.hint}</span>
+                      <span className="block px-2 pb-2 pt-1">
+                        <span className="block text-2xs font-semibold leading-tight text-ink">{s.title}</span>
+                        <span className="block text-2xs leading-tight text-muted">{s.hint}</span>
                       </span>
                     </button>
                   ))}
                 </div>
                 <button
                   onClick={() => fileInput.current?.click()}
-                  className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-slate-300 py-2.5 text-[12px] font-medium text-muted transition hover:border-slate-400 hover:text-ink"
+                  className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-slate-300 py-2 text-xs font-medium text-muted transition hover:border-slate-400 hover:text-ink"
                 >
                   <Upload className="h-4 w-4" /> Upload your own photo
                 </button>
                 <input ref={fileInput} type="file" accept="image/*" className="hidden" onChange={onFileChosen} />
-                <p className="mt-1.5 text-[10px] text-slate-400">Test photos above are bundled demo scenarios.</p>
               </>
             ) : (
-              <div className="space-y-2.5">
+              <div className="space-y-3">
                 <div className="relative h-28 overflow-hidden rounded-lg bg-slate-100">
                   <SafeImage src={photo.url} alt="Submitted street" className="h-full w-full object-cover" />
                   {scan === 'scanning' && (
-                    <>
-                      <span className="absolute inset-x-0 h-px animate-scan bg-white shadow-[0_0_0_1px_rgba(255,255,255,0.5)]" />
-                      <span className="absolute inset-x-0 bottom-0 flex items-center gap-2 bg-ink/80 px-3 py-1.5 text-[12px] font-medium text-white">
-                        <ScanLine className="h-3.5 w-3.5 animate-pulse" />
-                        Analyzing image with Vision AI...
-                      </span>
-                    </>
+                    <span className="absolute inset-x-0 bottom-0 flex items-center gap-2 bg-ink/85 px-3 py-2 text-xs font-medium text-white">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span key={step} className="animate-fade-in">{SCAN_STEPS[step]}</span>
+                    </span>
+                  )}
+                  {scan === 'done' && ai?.status !== 'unavailable' && (
+                    <span className="absolute inset-x-0 bottom-0 flex animate-fade-in items-center gap-2 bg-ink/85 px-3 py-2 text-xs font-medium text-white">
+                      {verified ? <BadgeCheck className="h-4 w-4" /> : <CircleX className="h-4 w-4" />}
+                      {verified ? 'Verified' : 'Rejected'}
+                    </span>
                   )}
                   <button onClick={clearPhoto} aria-label="Remove photo" className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-full bg-ink/70 text-white">
-                    <X className="h-3.5 w-3.5" />
+                    <X className="h-4 w-4" />
                   </button>
                 </div>
-                {photo.credit && <p className="text-[9px] text-slate-400">Photo: {photo.credit}</p>}
+                {photo.credit && <p className="text-2xs text-muted">Photo: {photo.credit}</p>}
+
+                {scan === 'scanning' && (
+                  <div className="space-y-2 rounded-lg border border-hairline p-3" aria-hidden>
+                    <div className="h-4 w-4/4 animate-pulse rounded bg-slate-200" />
+                    <div className="h-3 w-full animate-pulse rounded bg-slate-200" />
+                    <div className="h-3 w-2/3 animate-pulse rounded bg-slate-200" />
+                  </div>
+                )}
 
                 {ai && (
                   <div className="animate-fade-in">
                     {verified && <VerifiedCard ai={ai} />}
                     {rejected && (
                       <div className="rounded-lg border border-red-200 bg-[#FEF2F2] p-3">
-                        <p className="flex items-start gap-2 text-[12px] font-semibold leading-snug text-[#991B1B]">
+                        <p className="flex items-start gap-2 text-xs font-semibold leading-snug text-[#991B1B]">
                           <CircleX className="mt-px h-4 w-4 shrink-0" />
                           {ai.message}
                         </p>
-                        {ai.reason && <p className="mt-1.5 pl-6 text-[11px] leading-snug text-[#991B1B]/80">What the AI saw: {ai.reason}</p>}
-                        <button onClick={clearPhoto} className="ml-6 mt-2 text-[11px] font-semibold text-[#991B1B] underline underline-offset-2">
+                        {ai.reason && <p className="mt-2 pl-6 text-2xs leading-snug text-[#991B1B]/80">What the AI saw: {ai.reason}</p>}
+                        <button onClick={clearPhoto} className="ml-6 mt-2 text-2xs font-semibold text-[#991B1B] underline underline-offset-2">
                           Try a different photo
                         </button>
                       </div>
                     )}
                     {ai.status === 'unavailable' && (
                       <div className="rounded-lg border border-hairline bg-canvas p-3">
-                        <p className="flex items-start gap-2 text-[12px] font-medium leading-snug text-ink">
+                        <p className="flex items-start gap-2 text-xs font-medium leading-snug text-ink">
                           <WifiOff className="mt-px h-4 w-4 shrink-0 text-muted" />
                           {ai.message}
                         </p>
-                        <p className="mt-1 pl-6 text-[11px] text-muted">This photo was not analysed. The report will be marked unverified.</p>
+                        <p className="mt-1 pl-6 text-2xs text-muted">This photo was not analysed. The report will be marked unverified.</p>
                       </div>
                     )}
                   </div>
@@ -241,12 +262,12 @@ export default function ReportDrawer({ location, usingCurrentPin, onUseCurrentPi
           <button
             disabled={!canSubmit}
             onClick={() => onSubmit({ depth: finalDepth, ai: verified ? ai : null, photo: photo?.url ?? null })}
-            className="w-full rounded-xl bg-ink py-3 text-[14px] font-semibold text-white transition enabled:hover:bg-slate-800 enabled:active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+            className="w-full rounded-lg bg-accent py-3 text-sm font-semibold text-white transition enabled:hover:bg-sky-700 enabled:active:scale-95 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-muted"
           >
             {submitLabel}
           </button>
           {!rejected && !canSubmit && scan !== 'scanning' && (
-            <p className="mt-1.5 text-center text-[11px] text-slate-400">
+            <p className="mt-2 text-center text-2xs text-muted">
               {!location ? 'Choose a location to continue' : 'Select a depth or add a photo'}
             </p>
           )}
@@ -264,7 +285,7 @@ function VerifiedCard({ ai }) {
       {/* Did the AI agree with the citizen? */}
       {ai.correction ? (
         <p
-          className={`flex items-start gap-2 border-b px-3 py-2.5 text-[12px] font-medium leading-snug ${
+          className={`flex items-start gap-2 border-b px-3 py-2 text-xs font-medium leading-snug ${
             up ? 'border-amber-200 bg-[#FFFBEB] text-[#92400E]' : 'border-slate-200 bg-canvas text-ink'
           }`}
         >
@@ -272,18 +293,18 @@ function VerifiedCard({ ai }) {
           {ai.correction.message}
         </p>
       ) : (
-        <p className="flex items-center gap-2 border-b border-hairline bg-canvas px-3 py-2 text-[12px] font-medium text-ink">
-          <BadgeCheck className="h-4 w-4 text-clear" />
+        <p className="flex items-center gap-2 border-b border-hairline bg-canvas px-3 py-2 text-xs font-medium text-ink">
+          <BadgeCheck className="h-4 w-4 text-[#047857]" />
           {ai.agreement === 'confirmed' ? `AI confirms your ${depth.label} estimate.` : `AI estimate: ${depth.label}.`}
         </p>
       )}
 
-      <dl className="divide-y divide-hairline text-[12px]">
+      <dl className="divide-y divide-hairline text-xs">
         <Row term="AI Depth Estimate">
-          <span className="inline-flex items-center gap-1.5">
+          <span className="inline-flex items-center gap-2">
             <span className="h-2 w-2 rounded-full" style={{ background: depth.color }} />
             {depth.label} (~{ai.depthCm}cm)
-            {ai.correction && (up ? <ArrowUp className="h-3 w-3 text-danger" /> : <ArrowDown className="h-3 w-3 text-clear" />)}
+            {ai.correction && (up ? <ArrowUp className="h-4 w-4 text-[#B91C1C]" /> : <ArrowDown className="h-4 w-4 text-[#047857]" />)}
           </span>
         </Row>
         <Row term="Drainage Status">
@@ -293,9 +314,9 @@ function VerifiedCard({ ai }) {
       </dl>
 
       {/* Visual reference breakdown: what the estimate is based on */}
-      <div className="border-t border-hairline bg-canvas px-3 py-2.5">
-        <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted">Visual reference breakdown</p>
-        <div className="grid grid-cols-3 gap-2 text-[11px]">
+      <div className="border-t border-hairline bg-canvas px-3 py-2">
+        <p className="mb-2 text-2xs font-semibold uppercase tracking-wide text-muted">Visual reference breakdown</p>
+        <div className="grid grid-cols-3 gap-2 text-2xs">
           <div>
             <p className="text-muted">Reference Object</p>
             <p className="font-semibold leading-tight text-ink">{ai.reference.object}</p>
@@ -312,7 +333,7 @@ function VerifiedCard({ ai }) {
             <p className="font-semibold text-ink">{ai.reference.debris ? 'Yes' : 'No'}</p>
           </div>
         </div>
-        <p className="mt-2 text-[9px] text-slate-400">Source: {ai.source}</p>
+        <p className="mt-2 text-2xs text-muted">Source: {ai.source}</p>
       </div>
     </div>
   )
@@ -328,15 +349,15 @@ function Row({ term, children }) {
 }
 
 function Label({ children }) {
-  return <p className="mb-1.5 flex items-center text-[11px] font-semibold uppercase tracking-wide text-muted">{children}</p>
+  return <p className="mb-2 flex items-center text-2xs font-semibold uppercase tracking-wide text-muted">{children}</p>
 }
 
 function Choice({ active, onClick, children }) {
   return (
     <button
       onClick={onClick}
-      className={`flex items-center justify-center gap-1.5 rounded-lg border py-2.5 text-[12px] font-semibold transition ${
-        active ? 'border-ink bg-ink text-white' : 'border-hairline bg-white text-ink hover:border-slate-400'
+      className={`flex items-center justify-center gap-2 rounded-lg border py-2 text-xs font-semibold transition ${
+        active ? 'border-accent bg-accent text-white' : 'border-hairline bg-white text-ink hover:border-slate-400'
       }`}
     >
       {children}

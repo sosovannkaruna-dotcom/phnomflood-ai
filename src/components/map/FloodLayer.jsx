@@ -33,24 +33,24 @@ export default function FloodLayer({ reports, showZones = true }) {
         <Marker position={position} icon={floodIcon(report.depth, { isNew: report.isNew })} zIndexOffset={depth.rank * 100}>
           <Popup>
             <div className="min-w-[180px]">
-              <div className="text-[13px] font-semibold text-slate-900">{report.name}</div>
-              <div className="mb-2 text-[11px] text-slate-500">
+              <div className="text-compact font-semibold text-slate-900">{report.name}</div>
+              <div className="mb-2 text-2xs text-muted">
                 Khan {report.khan} · Sangkat {report.sangkat}
               </div>
               <span
-                className="inline-block rounded-md px-1.5 py-0.5 text-[11px] font-semibold"
+                className="inline-block rounded-md px-1.5 py-0.5 text-2xs font-semibold"
                 style={{ background: depth.soft, color: depth.text }}
               >
                 {depth.label}
                 {depth.cm ? ` · ~${report.ai?.depthCm ?? depth.cm} cm` : ''}
               </span>
-              <div className="mt-1.5 text-[11px] text-slate-600">{depth.advice}</div>
+              <div className="mt-2 text-2xs text-muted">{depth.advice}</div>
               {report.ai && (
-                <div className="mt-1.5 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-medium text-slate-700">
+                <div className="mt-2 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-2xs font-medium text-slate-700">
                   AI verified · {report.ai.drainage.status}
                 </div>
               )}
-              <div className="mt-1.5 text-[10px] text-slate-400">
+              <div className="mt-2 text-2xs text-muted">
                 {SOURCE_LABEL[report.source] ?? 'Report'} · {timeAgo(report.createdAt)}
               </div>
             </div>

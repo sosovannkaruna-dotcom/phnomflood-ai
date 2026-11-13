@@ -25,7 +25,7 @@ export default function App() {
   }, [])
 
   return (
-    <div className="flex h-full flex-col bg-[#F1F5F9] text-ink">
+    <div className="flex h-dvh flex-col bg-[#F1F5F9] text-ink">
       <NavBar mode={mode} onModeChange={setMode} />
       <main className="min-h-0 flex-1">
         {mode === 'citizen' ? <CitizenView /> : <DashboardView />}
