@@ -26,7 +26,7 @@ export default function DispatchQueue({ queue, onDispatch, onFocus, focusId }) {
   }
 
   return (
-    <section className="flex h-full min-h-0 flex-col rounded-xl border border-hairline bg-white shadow-sm">
+    <section className="flex max-h-[32rem] flex-col rounded-xl border border-hairline bg-white shadow-sm lg:h-full lg:max-h-none lg:min-h-0">
       <header className="flex shrink-0 items-baseline justify-between gap-3 border-b border-hairline px-4 py-3">
         <h2 className="text-sm font-semibold text-ink">AI Dispatch &amp; Maintenance Queue: Phnom Penh Storm Drains</h2>
         <span className="shrink-0 text-xs text-muted">

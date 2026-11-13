@@ -36,7 +36,7 @@ export default function DashboardView() {
   ]
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-3 bg-slate-100 p-3 text-ink sm:p-4">
+    <div className="flex h-full min-h-0 flex-col gap-3 overflow-y-auto bg-slate-100 p-3 text-ink sm:p-4">
       {/* Title + metric pills */}
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
         <h1 className="text-lg font-semibold text-ink">Municipal &amp; Venture Command Center: Phnom Penh Flood Operations</h1>
@@ -60,8 +60,8 @@ export default function DashboardView() {
       </dl>
 
       {/* Map + queue take the primary visual weight */}
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-[65fr_35fr]">
-        <section className="flex min-h-80 flex-col overflow-hidden rounded-xl border border-hairline bg-white shadow-sm">
+      <div className="grid shrink-0 grid-cols-1 gap-3 lg:min-h-0 lg:flex-1 lg:shrink lg:grid-cols-[65fr_35fr]">
+        <section className="flex h-96 flex-col overflow-hidden rounded-xl border border-hairline bg-white shadow-sm lg:h-auto lg:min-h-80">
           <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-hairline px-4 py-3">
             <h2 className="text-sm font-semibold text-ink">Phnom Penh Micro-Drainage &amp; Elevation Risk Map</h2>
             <div className="flex flex-wrap gap-x-4 gap-y-1">
