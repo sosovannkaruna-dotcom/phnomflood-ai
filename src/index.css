@@ -1,0 +1,218 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  color: #0f172a;
+  background: #f1f5f9;
+}
+
+/* ───────────── Leaflet base ───────────── */
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  font-family: inherit;
+  background: #e8ecf0;
+  outline: none;
+}
+.leaflet-control-attribution {
+  font-size: 10px;
+  color: #64748b;
+  background: rgba(255, 255, 255, 0.85) !important;
+}
+.leaflet-bar {
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06) !important;
+}
+.leaflet-bar a {
+  color: #0f172a;
+}
+.leaflet-popup-content-wrapper {
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 8px 20px -8px rgba(15, 23, 42, 0.25);
+}
+.leaflet-popup-content {
+  margin: 12px 14px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.leaflet-tooltip.pf-tip {
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 3px 7px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #0f172a;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12);
+}
+.leaflet-tooltip.pf-tip::before {
+  display: none;
+}
+
+/* Slightly calmer base map so pins and routes carry the colour. */
+.map-muted .leaflet-tile-pane {
+  filter: saturate(0.55) contrast(0.96) brightness(1.03);
+}
+
+/* ───────────── Flood pins ───────────── */
+.pf-pin {
+  position: relative;
+  width: 26px;
+  height: 26px;
+  border-radius: 9999px;
+  border: 2.5px solid #fff;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.35);
+}
+.pf-pin svg {
+  width: 13px;
+  height: 13px;
+}
+.pf-pin.pf-pulse::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 9999px;
+  border: 2px solid var(--pf-color);
+  opacity: 0;
+  animation: pf-ring 2.2s ease-out infinite;
+}
+.pf-pin.pf-new {
+  animation: pf-drop 420ms cubic-bezier(0.2, 1.3, 0.4, 1) both;
+}
+.pf-pin .pf-new-tag {
+  position: absolute;
+  top: -15px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #0f172a;
+  color: #fff;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 1px 5px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+@keyframes pf-ring {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+@keyframes pf-drop {
+  0% {
+    transform: translateY(-22px) scale(0.7);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+/* Rider GPS dot */
+.pf-rider {
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  background: #2563eb;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.16), 0 1px 3px rgba(15, 23, 42, 0.4);
+}
+
+/* Origin / destination markers */
+.pf-end {
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  background: #fff;
+  border: 4px solid #0f172a;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.35);
+}
+.pf-end.pf-dest {
+  border-radius: 3px;
+  background: #0f172a;
+  outline: 2.5px solid #fff;
+}
+
+/* Route name bubbles on the map */
+.pf-route-label {
+  display: inline-block;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.16);
+}
+.pf-route-label.is-safe {
+  color: #047857;
+}
+.pf-route-label.is-blocked {
+  color: #b91c1c;
+}
+.pf-route-label.is-neutral {
+  color: #475569;
+}
+
+/* Safe-route draw-on animation (class is toggled from React) */
+.route-draw {
+  stroke-dasharray: 5000;
+  stroke-dashoffset: 5000;
+  animation: route-draw 1100ms ease-out forwards;
+}
+@keyframes route-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.route-stale {
+  animation: route-stale 700ms ease-in-out infinite alternate;
+}
+@keyframes route-stale {
+  from {
+    stroke-opacity: 0.7;
+  }
+  to {
+    stroke-opacity: 0.25;
+  }
+}
+
+/* Clogged-drain heat blobs (dashboard) */
+.heat-blob {
+  filter: blur(8px);
+  pointer-events: none;
+}
+
+/* Thin scrollbars inside panels */
+.thin-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+.thin-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.thin-scroll::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}

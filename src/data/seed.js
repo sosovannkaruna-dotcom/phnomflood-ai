@@ -1,0 +1,210 @@
+// Starting demo data. Everything here is MOCK data for the prototype:
+// plausible, located on real streets, but not real observations.
+
+// Five flood pins across known Phnom Penh flood-prone areas.
+// `area` is the short street name used in route warnings.
+export const SEED_REPORTS = [
+  {
+    id: 'h-st289',
+    name: 'Street 289, Tuol Kork',
+    area: 'St. 289',
+    khan: 'Tuol Kork',
+    sangkat: 'Boeung Kak 2',
+    lat: 11.5707,
+    lng: 104.8994,
+    depth: 'knee',
+    source: 'rider',
+    minutesAgo: 9,
+  },
+  {
+    id: 'h-russian',
+    name: 'Russian Blvd near Wat Neakvoan',
+    area: 'Russian Blvd',
+    khan: 'Tuol Kork',
+    sangkat: 'Boeung Kak 2',
+    lat: 11.5703,
+    lng: 104.9045,
+    depth: 'ankle',
+    source: 'citizen',
+    minutesAgo: 14,
+  },
+  {
+    id: 'h-st63',
+    name: 'Street 63, BKK1',
+    area: 'St. 63',
+    khan: 'Boeung Keng Kang',
+    sangkat: 'Boeung Keng Kang 1',
+    lat: 11.552,
+    lng: 104.924,
+    depth: 'ankle',
+    source: 'citizen',
+    minutesAgo: 21,
+  },
+  {
+    id: 'h-monivong',
+    name: 'Monivong Blvd near Central Market',
+    area: 'Monivong Blvd',
+    khan: 'Daun Penh',
+    sangkat: 'Phsar Thmei 2',
+    lat: 11.5686,
+    lng: 104.9186,
+    depth: 'knee',
+    source: 'rider',
+    minutesAgo: 6,
+  },
+  {
+    id: 'h-norodom',
+    name: 'Norodom Blvd',
+    area: 'Norodom Blvd',
+    khan: 'Daun Penh',
+    sangkat: 'Chey Chumneah',
+    lat: 11.5625,
+    lng: 104.9285,
+    depth: 'clear',
+    source: 'monitor',
+    minutesAgo: 4,
+  },
+]
+
+// AI dispatch & maintenance queue: grates that flood repeatedly, even in moderate rain.
+export const SEED_QUEUE = [
+  {
+    id: 'q-st289',
+    name: 'Street 289 × Russian Blvd',
+    khan: 'Tuol Kork',
+    sangkat: 'Boeung Kak 2',
+    lat: 11.5698,
+    lng: 104.8996,
+    diagnosis: 'Recurring flood + visual trash detected at grate',
+    frequency: 4,
+    urgency: 94,
+    crew: 'Cleanup crew + pump truck',
+    grateFlagged: true,
+  },
+  {
+    id: 'q-monivong',
+    name: 'Monivong Blvd @ Central Market',
+    khan: 'Daun Penh',
+    sangkat: 'Phsar Thmei 2',
+    lat: 11.5686,
+    lng: 104.9186,
+    diagnosis: 'Floods in moderate rain (under 15 mm/hr): outflow pipe likely silted',
+    frequency: 3,
+    urgency: 87,
+    crew: 'Vacuum truck',
+    grateFlagged: true,
+  },
+  {
+    id: 'q-st63',
+    name: 'Street 63 @ St. 294, BKK1',
+    khan: 'Boeung Keng Kang',
+    sangkat: 'Boeung Keng Kang 1',
+    lat: 11.5527,
+    lng: 104.9238,
+    diagnosis: 'Water still standing 3 h after rain stopped: partial grate blockage',
+    frequency: 3,
+    urgency: 76,
+    crew: 'Cleanup crew',
+    grateFlagged: true,
+  },
+  {
+    id: 'q-st163',
+    name: 'Street 163 near Olympic Market',
+    khan: 'Boeung Keng Kang',
+    sangkat: 'Olympic',
+    lat: 11.5548,
+    lng: 104.9142,
+    diagnosis: 'Low-elevation bowl + ponding in 2 of the last 5 storms',
+    frequency: 2,
+    urgency: 64,
+    crew: 'Inspection team',
+    grateFlagged: true,
+  },
+]
+
+export const BASE_RIDERS_REROUTED = 1420
+
+// Historic clogged-drain signals for the dashboard heatmap: [lat, lng, weight 0–1].
+export const DRAIN_HEAT_POINTS = [
+  [11.5698, 104.8996, 1],
+  [11.5712, 104.8993, 0.8],
+  [11.5703, 104.9045, 0.55],
+  [11.5686, 104.9186, 0.9],
+  [11.5673, 104.9192, 0.6],
+  [11.5527, 104.9238, 0.75],
+  [11.5508, 104.9243, 0.5],
+  [11.5548, 104.9142, 0.6],
+  [11.5775, 104.9122, 0.45],
+  [11.5462, 104.9105, 0.4],
+  [11.5405, 104.9152, 0.35],
+]
+
+// Low-elevation "bowl" zones. ILLUSTRATIVE outlines drawn around known low-lying
+// areas; replace with polygons derived from the NASA SRTM elevation model.
+export const ELEVATION_ZONES = [
+  {
+    id: 'z-boeungkak',
+    name: 'Boeung Kak basin (filled lake)',
+    risk: 'Very high',
+    outline: [
+      [11.5868, 104.9085],
+      [11.5875, 104.915],
+      [11.584, 104.9186],
+      [11.5775, 104.9192],
+      [11.5748, 104.915],
+      [11.5762, 104.9092],
+      [11.5815, 104.9072],
+    ],
+  },
+  {
+    id: 'z-tuolkork',
+    name: 'Tuol Kork low bowl',
+    risk: 'High',
+    outline: [
+      [11.576, 104.8962],
+      [11.5768, 104.9025],
+      [11.5735, 104.9066],
+      [11.5692, 104.9062],
+      [11.5682, 104.9005],
+      [11.5696, 104.8966],
+    ],
+  },
+  {
+    id: 'z-centralmarket',
+    name: 'Central Market dip',
+    risk: 'High',
+    outline: [
+      [11.5716, 104.9168],
+      [11.5712, 104.9222],
+      [11.5668, 104.9228],
+      [11.5655, 104.9188],
+      [11.5672, 104.9162],
+    ],
+  },
+  {
+    id: 'z-bkk',
+    name: 'BKK – Boeung Trabek basin',
+    risk: 'High',
+    outline: [
+      [11.5556, 104.9205],
+      [11.5552, 104.9272],
+      [11.5492, 104.929],
+      [11.5435, 104.9278],
+      [11.5422, 104.9212],
+      [11.5478, 104.9192],
+    ],
+  },
+  {
+    id: 'z-tompun',
+    name: 'Boeung Tompun fringe',
+    risk: 'Very high',
+    outline: [
+      [11.5398, 104.8985],
+      [11.5412, 104.9085],
+      [11.5372, 104.9135],
+      [11.5312, 104.912],
+      [11.5298, 104.9015],
+      [11.5345, 104.8962],
+    ],
+  },
+]
