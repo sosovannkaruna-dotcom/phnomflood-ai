@@ -48,7 +48,7 @@ export default function App() {
         </Suspense>
       </div>
 
-      <div className="absolute right-4 top-4 hidden items-center gap-2 sm:flex">
+      <div className="absolute right-4 top-4 hidden items-center gap-2 lg:flex">
         <button onClick={resetDemo} aria-label="Reset demo data" title="Reset demo data" className="cc-panel cc-btn grid h-10 w-10 place-items-center rounded-lg text-zinc-400">
           <RotateCcw className="h-4 w-4" />
         </button>

@@ -54,7 +54,7 @@ export default function TopHud({ trip, place, mode, onToggleMode, onOpenCity }: 
           >
             <Layers className="h-5 w-5" />
           </button>
-          <button onClick={onOpenCity} aria-label="Open the city command center" title="City command center" className="cc-panel rd-press grid h-11 w-11 shrink-0 place-items-center rounded-lg text-zinc-300 sm:hidden">
+          <button onClick={onOpenCity} aria-label="Open the city command center" title="City command center" className="cc-panel rd-press grid h-11 w-11 shrink-0 place-items-center rounded-lg text-zinc-300 lg:hidden">
             <LayoutDashboard className="h-5 w-5" />
           </button>
         </div>
