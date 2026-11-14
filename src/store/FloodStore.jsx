@@ -79,6 +79,13 @@ function reducer(state, action) {
           q.id === action.id ? { ...q, status: 'dispatched', dispatchedAt: Date.now() } : q,
         ),
       }
+    case 'CONFIRM_REPORT':
+      return {
+        ...state,
+        reports: state.reports.map((r) => (r.id === action.id ? { ...r, confirmations: (r.confirmations ?? 0) + 1, createdAt: Date.now() } : r)),
+      }
+    case 'CLEAR_REPORT':
+      return { ...state, reports: state.reports.filter((r) => r.id !== action.id) }
     case 'ADD_REROUTED':
       return { ...state, ridersRerouted: state.ridersRerouted + action.count }
     case 'RESET':
@@ -105,6 +112,8 @@ export function FloodProvider({ children }) {
       addReport: (report) => dispatch({ type: 'ADD_REPORT', report }),
       dispatchCrew: (id) => dispatch({ type: 'DISPATCH_CREW', id }),
       addRerouted: (count) => dispatch({ type: 'ADD_REROUTED', count }),
+      confirmReport: (id) => dispatch({ type: 'CONFIRM_REPORT', id }),
+      clearReport: (id) => dispatch({ type: 'CLEAR_REPORT', id }),
       resetDemo: () => {
         clearState()
         dispatch({ type: 'RESET' })

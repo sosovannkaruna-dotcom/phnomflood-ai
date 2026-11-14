@@ -40,9 +40,9 @@ export const DEMO_SCENARIOS = [
     verdict: {
       isFlood: true,
       depth: 'knee',
-      depthCm: 48,
+      depthCm: 28,
       cue: 'tire submersion',
-      reference: { object: 'Motorbike Wheel Hub', submersionPct: 55, debris: true },
+      reference: { object: 'Motorbike Wheel Hub', submersionPct: 50, debris: true },
       drainage: { status: 'Plastic Debris Blocking Curb Grate', blocked: true, confidence: 0.94 },
     },
   },
@@ -55,7 +55,7 @@ export const DEMO_SCENARIOS = [
     verdict: {
       isFlood: true,
       depth: 'ankle',
-      depthCm: 12,
+      depthCm: 8,
       cue: 'water below pedestrians’ ankles',
       reference: { object: 'Pedestrian Lower Leg', submersionPct: 18, debris: false },
       drainage: { status: 'No Blockage Visible — Water Draining', blocked: false, confidence: 0.88 },

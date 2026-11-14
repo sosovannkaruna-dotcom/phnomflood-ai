@@ -2,6 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ═══════════ PhnomFlood design system: Tactile Obsidian & Slate ═══════════
+   One recipe for both the rider app and the city command center.
+   Base #090A0F · frosted panels · 1px hairlines · Inter + JetBrains Mono.
+   Colour is semantic only: emerald clear, amber caution, red impassable, sky hydrology. */
+
 html,
 body,
 #root {
@@ -12,10 +17,12 @@ body {
   margin: 0;
   font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
-  color: #0f172a;
-  background: #f1f5f9;
+  color: #f4f4f5;
+  background: #090a0f;
+  color-scheme: dark;
   /* Digits never shift sideways as values update */
   font-variant-numeric: tabular-nums;
+  overscroll-behavior: none;
 }
 
 /* One icon weight everywhere */
@@ -23,225 +30,23 @@ body {
   stroke-width: 1.75;
 }
 
-/* Route lines change colour smoothly when a route is recalculated */
-path.leaflet-interactive {
-  transition: stroke 400ms ease, stroke-opacity 400ms ease;
-}
-
-/* ───────────── Leaflet base ───────────── */
-.leaflet-container {
-  width: 100%;
-  height: 100%;
-  font-family: inherit;
-  background: #e8ecf0;
-  outline: none;
-}
-.leaflet-control-attribution {
-  font-size: 11px;
-  color: #475569;
-  background: rgba(255, 255, 255, 0.9) !important;
-}
-.leaflet-bar {
-  border: 1px solid #e2e8f0 !important;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06) !important;
-}
-.leaflet-bar a {
-  color: #0f172a;
-}
-.leaflet-popup-content-wrapper {
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
-}
-.leaflet-popup-content {
-  margin: 12px 14px;
-  font-size: 12px;
-  line-height: 1.4;
-}
-.leaflet-tooltip.pf-tip {
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  padding: 3px 7px;
-  font-size: 11px;
-  font-weight: 500;
-  color: #0f172a;
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12);
-}
-.leaflet-tooltip.pf-tip::before {
-  display: none;
-}
-
-/* Slightly calmer base map so pins and routes carry the colour. */
-.map-muted .leaflet-tile-pane {
-  filter: saturate(0.55) contrast(0.96) brightness(1.03);
-}
-
-/* ───────────── Flood pins ───────────── */
-.pf-pin {
-  position: relative;
-  width: 26px;
-  height: 26px;
-  border-radius: 9999px;
-  border: 2.5px solid #fff;
-  display: grid;
-  place-items: center;
-  color: #fff;
-  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.35);
-}
-.pf-pin svg {
-  width: 13px;
-  height: 13px;
-}
-.pf-pin.pf-pulse::after {
-  content: '';
-  position: absolute;
-  inset: -3px;
-  border-radius: 9999px;
-  border: 2px solid var(--pf-color);
-  opacity: 0;
-  animation: pf-ring 2.2s ease-out infinite;
-}
-.pf-pin.pf-new {
-  animation: pf-drop 420ms cubic-bezier(0.2, 1.3, 0.4, 1) both;
-}
-.pf-pin .pf-new-tag {
-  position: absolute;
-  top: -15px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #0f172a;
-  color: #fff;
-  font-size: 10px;
-  font-weight: 600;
-  padding: 1px 5px;
-  border-radius: 4px;
-  white-space: nowrap;
-}
-@keyframes pf-ring {
-  0% {
-    transform: scale(1);
-    opacity: 0.6;
-  }
-  100% {
-    transform: scale(2.2);
-    opacity: 0;
-  }
-}
-@keyframes pf-drop {
-  0% {
-    transform: translateY(-22px) scale(0.7);
-    opacity: 0;
-  }
-  100% {
-    transform: translateY(0) scale(1);
-    opacity: 1;
-  }
-}
-
-/* Rider GPS dot */
-.pf-rider {
-  width: 16px;
-  height: 16px;
-  border-radius: 9999px;
-  background: #0284c7;
-  border: 3px solid #fff;
-  box-shadow: 0 0 0 6px rgba(2, 132, 199, 0.18);
-}
-
-/* Origin / destination markers */
-.pf-end {
-  width: 14px;
-  height: 14px;
-  border-radius: 9999px;
-  background: #fff;
-  border: 4px solid #0f172a;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.35);
-}
-.pf-end.pf-dest {
-  border-radius: 3px;
-  background: #0f172a;
-  outline: 2.5px solid #fff;
-}
-
-/* Route name bubbles on the map */
-.pf-route-label {
-  display: inline-block;
-  transform: translate(-50%, -50%);
-  white-space: nowrap;
-  font-size: 11px;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 6px;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
-}
-.pf-route-label.is-safe {
-  color: #047857;
-}
-.pf-route-label.is-blocked {
-  color: #b91c1c;
-}
-.pf-route-label.is-neutral {
-  color: #475569;
-}
-
-/* Safe-route draw-on animation (class is toggled from React) */
-.route-draw {
-  stroke-dasharray: 5000;
-  stroke-dashoffset: 5000;
-  animation: route-draw 1100ms ease-out forwards;
-}
-@keyframes route-draw {
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-.route-stale {
-  animation: route-stale 700ms ease-in-out infinite alternate;
-}
-@keyframes route-stale {
-  from {
-    stroke-opacity: 0.7;
-  }
-  to {
-    stroke-opacity: 0.25;
-  }
-}
-
-/* Clogged-drain heat blobs (dashboard) */
-.heat-blob {
-  filter: blur(8px);
-  pointer-events: none;
-}
-
-/* Thin scrollbars inside panels */
-.thin-scroll {
-  scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 transparent;
-}
-.thin-scroll::-webkit-scrollbar {
-  width: 6px;
-}
-.thin-scroll::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 9999px;
-}
-
-/* ═══════════ City command center (dark operations view) ═══════════ */
-.cc-root {
-  font-family: Inter, system-ui, sans-serif;
-  color-scheme: dark;
-}
-.cc-root .font-mono,
+.font-mono,
 .cc-popup .maplibregl-popup-content {
   font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
   font-variant-numeric: tabular-nums;
 }
 
-/* Floating glass panel: one recipe, used for every HUD surface */
+/* Safe areas: keep HUD chrome clear of notches and home indicators */
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ── Surfaces and controls ── */
 .cc-panel {
-  background: rgba(15, 17, 23, 0.82);
+  background: rgba(15, 17, 23, 0.88);
   -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -256,9 +61,18 @@ path.leaflet-interactive {
 .cc-btn:active {
   transform: scale(0.98);
 }
-.cc-btn:focus-visible {
+.cc-btn:focus-visible,
+.rd-press:focus-visible {
   outline: 1px solid #0ea5e9;
   outline-offset: 1px;
+}
+/* Field controls: a firm, fast press state */
+.rd-press {
+  transition: transform 100ms ease, background-color 120ms ease, border-color 120ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.rd-press:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
 .cc-scroll {
@@ -285,6 +99,28 @@ path.leaflet-interactive {
   }
 }
 
+@keyframes cc-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+@keyframes cc-drop {
+  0% {
+    transform: translateY(-22px) scale(0.7);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+/* ── Command center map markers ── */
 /* Telemetry node: a small diamond. The ring pulses only above warning threshold.
    The button is the map marker (MapLibre owns its transform); the <i> inside is the shape. */
 .cc-node {
@@ -331,16 +167,6 @@ path.leaflet-interactive {
   border-radius: inherit;
   animation: cc-pulse 2.8s ease-out infinite;
 }
-@keyframes cc-pulse {
-  0% {
-    transform: scale(1);
-    opacity: 0.7;
-  }
-  100% {
-    transform: scale(2.6);
-    opacity: 0;
-  }
-}
 
 /* Citizen flood report: solid dot in the depth colour */
 .cc-report {
@@ -353,8 +179,17 @@ path.leaflet-interactive {
   border: 2px solid #090a0f;
   box-shadow: 0 0 0 1px var(--c);
 }
+/* MapLibre positions markers with transform, so new-marker animations must not touch it */
 .cc-report.is-new {
-  animation: pf-drop 420ms cubic-bezier(0.2, 1.3, 0.4, 1) both;
+  animation: cc-ring 1.6s ease-out 3;
+}
+@keyframes cc-ring {
+  0% {
+    box-shadow: 0 0 0 1px var(--c), 0 0 0 2px var(--c);
+  }
+  100% {
+    box-shadow: 0 0 0 1px var(--c), 0 0 0 14px transparent;
+  }
 }
 
 /* Drain ticket: urgency score flag */
@@ -392,8 +227,82 @@ path.leaflet-interactive {
   outline: 1px solid #0ea5e9;
 }
 
-/* MapLibre chrome in the dark theme */
-.cc-root .maplibregl-map {
+/* ── Rider map markers ── */
+/* Rider puck: the SVG inside rotates to the heading */
+.rd-puck {
+  width: 64px;
+  height: 64px;
+  pointer-events: none;
+}
+.rd-puck > svg {
+  width: 100%;
+  height: 100%;
+  transition: transform 600ms ease;
+}
+
+/* Trip endpoints: ring for the origin, solid square for the destination */
+.rd-end {
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  background: #090a0f;
+  border: 3px solid #f4f4f5;
+}
+.rd-end.is-destination {
+  border-radius: 2px;
+  background: #f4f4f5;
+  border-color: #090a0f;
+  box-shadow: 0 0 0 1.5px #f4f4f5;
+}
+
+/* Flood hazard: triangle for stalling-risk water, small square for shallow ponding,
+   with the depth in centimetres beside it */
+.rd-hazard {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  pointer-events: none;
+}
+.rd-hazard > i {
+  display: block;
+  width: 0;
+  height: 0;
+  border-left: 9px solid transparent;
+  border-right: 9px solid transparent;
+  border-bottom: 16px solid var(--c);
+}
+.rd-hazard[data-kind='caution'] > i {
+  width: 10px;
+  height: 10px;
+  border: 2px solid #090a0f;
+  background: var(--c);
+  box-shadow: 0 0 0 1px var(--c);
+}
+.rd-hazard > span {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  padding: 3px 5px;
+  color: #090a0f;
+  background: var(--c);
+  border-radius: 2px;
+}
+.rd-hazard > span > small {
+  font-size: 10px;
+  margin-left: 1px;
+}
+.rd-hazard.is-new > * {
+  animation: cc-drop 420ms cubic-bezier(0.2, 1.3, 0.4, 1) both;
+}
+
+/* Map controls sit just above the collapsed bottom sheet */
+.rd-controls {
+  bottom: calc(244px + env(safe-area-inset-bottom, 0px));
+}
+
+/* ── MapLibre chrome ── */
+.maplibregl-map {
   font-family: inherit;
 }
 .cc-popup .maplibregl-popup-content {
@@ -421,39 +330,47 @@ path.leaflet-interactive {
   font-size: 12px;
   font-weight: 500;
 }
-.cc-root .maplibregl-ctrl-attrib {
+.maplibregl-ctrl-attrib {
   font-size: 10px;
   color: #a1a1aa;
-  background: rgba(15, 17, 23, 0.82);
+  background: rgba(15, 17, 23, 0.82) !important;
 }
-.cc-root .maplibregl-ctrl-attrib a {
+.maplibregl-ctrl-attrib a {
   color: #d4d4d8;
 }
-.cc-root .maplibregl-ctrl-attrib-button {
+.maplibregl-ctrl-attrib-button {
   filter: invert(1);
 }
+
+/* Command center: keep the map credit clear of the panels and the timeline */
 .cc-root .maplibregl-ctrl-bottom-right {
   bottom: 56px;
   right: 8px;
+}
+.cc-has-timeline .maplibregl-ctrl-bottom-right {
+  bottom: 124px;
 }
 @media (min-width: 1024px) {
   .cc-root .maplibregl-ctrl-bottom-right {
     bottom: 12px;
     right: 404px;
   }
+  .cc-has-timeline .maplibregl-ctrl-bottom-right {
+    bottom: 76px;
+  }
 }
 
-/* Keep the map credit clear of the forecast timeline */
-@media (min-width: 1024px) {
-  .cc-has-timeline .maplibregl-ctrl-bottom-right {
-    bottom: 76px;
-  }
+/* Rider app: map credit bottom-left, just above the sheet */
+.rd-root .maplibregl-ctrl-bottom-right {
+  right: auto;
+  left: 8px;
+  bottom: calc(244px + env(safe-area-inset-bottom, 0px));
 }
-.cc-has-timeline .maplibregl-ctrl-bottom-right {
-  bottom: 124px;
+
+/* Horizontal chip rows scroll without a visible bar */
+.rd-noscroll {
+  scrollbar-width: none;
 }
-@media (min-width: 1024px) {
-  .cc-has-timeline .maplibregl-ctrl-bottom-right {
-    bottom: 76px;
-  }
+.rd-noscroll::-webkit-scrollbar {
+  display: none;
 }

@@ -65,7 +65,9 @@ export interface FloodReport {
   source: string
   createdAt: number
   isNew?: boolean
-  ai?: { depthCm: number; drainage: { status: string; blocked: boolean; confidence: number } } | null
+  confirmations?: number
+  photo?: string | null
+  ai?: { depthCm: number; drainage: { status: string; blocked: boolean; confidence: number } } | null | undefined
 }
 
 export interface Ticket {
@@ -87,6 +89,10 @@ export interface FloodApi {
   reports: FloodReport[]
   queue: Ticket[]
   ridersRerouted: number
+  addReport: (report: FloodReport) => void
+  addRerouted: (count: number) => void
+  confirmReport: (id: string) => void
+  clearReport: (id: string) => void
   dispatchCrew: (id: string) => void
   resetDemo: () => void
 }

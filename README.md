@@ -3,8 +3,8 @@
 Hyper-local flash-flood routing and micro-drainage intelligence for Phnom Penh.
 Built for the Open Data X AI Venture Hackathon 1.0.
 
-React + Vite · Tailwind CSS · Leaflet (rider app) and MapLibre GL (city view) on
-OpenStreetMap data · Framer Motion · Lucide icons.
+React + Vite · Tailwind CSS · MapLibre GL on OpenStreetMap data · Framer Motion · Lucide icons.
+Both views share one dark design system (see the top of `src/index.css`).
 No API keys and no database: it runs entirely in the browser.
 
 ## Run it
@@ -22,8 +22,11 @@ Then open http://localhost:5173
 
 Switch with the buttons in the top bar, or press `1` / `2`.
 
-1. **Citizen & Rider App** — a Telegram Mini App inside a phone frame: live flood
-   map, vehicle-specific safe routing, and "Report Flood" with a Vision AI check.
+1. **Rider app** (`src/rider/`, TypeScript) — a full-screen dark map with a turn banner,
+   flood segments drawn on the roads, vehicle-specific safe routing, a two-detent bottom
+   sheet (route comparison, nearby reports) and a two-tap "Report Flood" drawer with an
+   optional Vision AI photo check. On a phone it fills the screen; on a desktop it is
+   shown as a device.
 2. **City command center** — a full-screen dark map with floating panels. Three views:
    - *Live Telemetry*: Khan (district) runoff risk, sensor nodes, citizen flood reports.
    - *24h Forecast*: a timeline from -6 h to +24 h that updates the map and every number.
@@ -36,12 +39,13 @@ dashboard at once. **Reset demo** (top right) restores the starting data.
 
 ## 45-second demo script
 
-1. Citizen view: point at the dashed red standard route (blocked on St. 289) and
-   the green safe route (+3 mins, dry streets).
-2. Switch vehicle to **Car / SUV** and back to **Motorbike** to show the routing change.
-3. **Report Flood** → **Use Current Pin** → tap **Ankle-Deep** → pick the **Flooded street**
-   photo. The AI overrides the claim to Knee-Deep. Submit.
-   (Optional: show **Dry street** being rejected first.)
+1. Rider app: point at the dashed red standard route (blocked on St. 289), the green
+   safe route and the DRY ROUTE badge in the turn banner.
+2. Tap **Car** and back to **Motorbike** to show the routing change. Drag the sheet up
+   to compare routes by time and flood exposure.
+3. **REPORT FLOOD** → **Add a photo for AI depth check** → pick the **Flooded street**
+   photo. The AI overrides the preselected Ankle depth to Knee-Deep. **SUBMIT TELEMETRY**.
+   (Optional: show **Dry street** being rejected first. Without a photo, Report → Submit is two taps.)
 4. Watch the new red pin drop, the "New flood detected ahead!" toast, and the route shift.
 5. Press `2`: the city view shows the new report on the map. Open **Drainage & Basins**
    to see the new ticket and click **Dispatch Pump / Cleanup Crew**. Click a Khan, scrub

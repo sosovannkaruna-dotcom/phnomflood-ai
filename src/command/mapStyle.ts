@@ -91,3 +91,34 @@ export const MAP_STYLE: StyleSpecification = {
     },
   ],
 }
+
+/**
+ * Rider variant: same canvas, but arterial roads (Monivong, Norodom, Russian Blvd,
+ * Mao Tse Toung, St. 271…) are brighter, wider and named from further out, so a
+ * rider can read the street grid at a glance.
+ */
+export const RIDER_MAP_STYLE: StyleSpecification = {
+  ...MAP_STYLE,
+  layers: [
+    ...MAP_STYLE.layers.map((layer) =>
+      layer.id === 'roads-major'
+        ? ({
+            ...layer,
+            paint: { 'line-color': '#3A4358', 'line-width': ['interpolate', ['linear'], ['zoom'], 9, 0.8, 12, 2, 16, 9] },
+          } as typeof layer)
+        : layer.id === 'roads-minor'
+          ? ({ ...layer, paint: { 'line-color': '#222837', 'line-width': ['interpolate', ['linear'], ['zoom'], 12, 0.5, 16, 4] } } as typeof layer)
+          : layer,
+    ),
+    {
+      id: 'arterial-names',
+      type: 'symbol',
+      source: 'omt',
+      'source-layer': 'transportation_name',
+      minzoom: 12,
+      filter: ['in', ['get', 'class'], ['literal', ['motorway', 'trunk', 'primary', 'secondary']]],
+      layout: { 'symbol-placement': 'line', 'text-field': LATIN_NAME, 'text-font': ['Noto Sans Regular'], 'text-size': 12, 'symbol-spacing': 320 },
+      paint: { 'text-color': '#AEB6C6', 'text-halo-color': '#0D0F14', 'text-halo-width': 1.4 },
+    },
+  ],
+}
