@@ -227,3 +227,233 @@ path.leaflet-interactive {
   background: #cbd5e1;
   border-radius: 9999px;
 }
+
+/* ═══════════ City command center (dark operations view) ═══════════ */
+.cc-root {
+  font-family: Inter, system-ui, sans-serif;
+  color-scheme: dark;
+}
+.cc-root .font-mono,
+.cc-popup .maplibregl-popup-content {
+  font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Floating glass panel: one recipe, used for every HUD surface */
+.cc-panel {
+  background: rgba(15, 17, 23, 0.82);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
+}
+.cc-btn {
+  transition: background-color 120ms ease, transform 120ms ease, color 120ms ease;
+}
+.cc-btn:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+.cc-btn:active {
+  transform: scale(0.98);
+}
+.cc-btn:focus-visible {
+  outline: 1px solid #0ea5e9;
+  outline-offset: 1px;
+}
+
+.cc-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+}
+.cc-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.cc-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 3px;
+}
+
+/* Skeleton shimmer */
+.cc-shimmer {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.05) 25%, rgba(255, 255, 255, 0.11) 50%, rgba(255, 255, 255, 0.05) 75%);
+  background-size: 200% 100%;
+  animation: cc-shimmer 1.4s linear infinite;
+}
+@keyframes cc-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/* Telemetry node: a small diamond. The ring pulses only above warning threshold.
+   The button is the map marker (MapLibre owns its transform); the <i> inside is the shape. */
+.cc-node {
+  --c: #10b981;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  cursor: pointer;
+  background: none;
+  border: none;
+}
+.cc-node[data-level='watch'] {
+  --c: #f59e0b;
+}
+.cc-node[data-level='critical'] {
+  --c: #ef4444;
+}
+.cc-node > i {
+  position: relative;
+  display: block;
+  width: 12px;
+  height: 12px;
+  background: #090a0f;
+  border: 1.5px solid var(--c);
+  transform: rotate(45deg);
+}
+.cc-node[data-kind='pump'] > i {
+  border-radius: 9999px;
+}
+.cc-node > i > b {
+  position: absolute;
+  inset: 2.5px;
+  background: var(--c);
+  border-radius: inherit;
+}
+.cc-node[data-level='watch'] > i::after,
+.cc-node[data-level='critical'] > i::after {
+  content: '';
+  position: absolute;
+  inset: -1.5px;
+  border: 1px solid var(--c);
+  border-radius: inherit;
+  animation: cc-pulse 2.8s ease-out infinite;
+}
+@keyframes cc-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+
+/* Citizen flood report: solid dot in the depth colour */
+.cc-report {
+  width: 12px;
+  height: 12px;
+  padding: 0;
+  cursor: pointer;
+  border-radius: 9999px;
+  background: var(--c);
+  border: 2px solid #090a0f;
+  box-shadow: 0 0 0 1px var(--c);
+}
+.cc-report.is-new {
+  animation: pf-drop 420ms cubic-bezier(0.2, 1.3, 0.4, 1) both;
+}
+
+/* Drain ticket: urgency score flag */
+.cc-ticket {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 10px;
+  line-height: 1;
+  padding: 3px 5px;
+  color: #090a0f;
+  background: var(--c);
+  border-radius: 2px;
+}
+
+/* Timeline scrubber: invisible native range over the custom track */
+.cc-range {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+  background: transparent;
+  cursor: ew-resize;
+}
+.cc-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 28px;
+  background: transparent;
+}
+.cc-range::-moz-range-thumb {
+  width: 12px;
+  height: 28px;
+  border: none;
+  background: transparent;
+}
+.cc-range:focus-visible {
+  outline: 1px solid #0ea5e9;
+}
+
+/* MapLibre chrome in the dark theme */
+.cc-root .maplibregl-map {
+  font-family: inherit;
+}
+.cc-popup .maplibregl-popup-content {
+  padding: 8px 10px;
+  color: #f4f4f5;
+  background: rgba(15, 17, 23, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  box-shadow: none;
+}
+.cc-popup .maplibregl-popup-tip {
+  display: none;
+}
+.cc-popup p {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.cc-popup .cc-popup-id,
+.cc-popup .cc-popup-note {
+  color: #a1a1aa;
+}
+.cc-popup .cc-popup-name {
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+}
+.cc-root .maplibregl-ctrl-attrib {
+  font-size: 10px;
+  color: #a1a1aa;
+  background: rgba(15, 17, 23, 0.82);
+}
+.cc-root .maplibregl-ctrl-attrib a {
+  color: #d4d4d8;
+}
+.cc-root .maplibregl-ctrl-attrib-button {
+  filter: invert(1);
+}
+.cc-root .maplibregl-ctrl-bottom-right {
+  bottom: 56px;
+  right: 8px;
+}
+@media (min-width: 1024px) {
+  .cc-root .maplibregl-ctrl-bottom-right {
+    bottom: 12px;
+    right: 404px;
+  }
+}
+
+/* Keep the map credit clear of the forecast timeline */
+@media (min-width: 1024px) {
+  .cc-has-timeline .maplibregl-ctrl-bottom-right {
+    bottom: 76px;
+  }
+}
+.cc-has-timeline .maplibregl-ctrl-bottom-right {
+  bottom: 124px;
+}
+@media (min-width: 1024px) {
+  .cc-has-timeline .maplibregl-ctrl-bottom-right {
+    bottom: 76px;
+  }
+}
