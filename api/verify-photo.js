@@ -41,6 +41,8 @@ const SCHEMA = {
 
 const DEFAULT_CM = { ankle: 10, knee: 25, waist: 45 }
 const FALLBACK_MODELS = ['gemini-3.8-flash', 'gemini-flash-latest']
+// Whole request budget, under the 60 s limit set for this function in vercel.json.
+const DEADLINE_MS = 55_000
 
 function rateLimited(ip) {
   const now = Date.now()
@@ -92,27 +94,49 @@ export default async function handler(req, res) {
   if (!ALLOWED.has(mimeType)) return res.status(400).json({ error: 'bad_type' })
 
   const models = [...new Set([process.env.GEMINI_MODEL, ...FALLBACK_MODELS].filter(Boolean))]
-  const payload = JSON.stringify({
-    contents: [{ parts: [{ inline_data: { mime_type: mimeType, data: image } }, { text: PROMPT }] }],
-    generationConfig: { responseMimeType: 'application/json', responseSchema: SCHEMA, temperature: 0.1 },
-  })
+  const started = Date.now()
   try {
     let upstream = null
     for (const model of models) {
-      upstream = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-        body: payload,
-        signal: AbortSignal.timeout(20_000),
-      })
-      if (upstream.status !== 404) break // only a missing model moves on to the next one
+      // Newer models think before answering; low effort keeps a photo check to a few seconds.
+      let thinking = true
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const remaining = DEADLINE_MS - (Date.now() - started)
+        if (remaining < 3000) break
+        upstream = await callGemini(key, model, mimeType, image, thinking, remaining)
+        if (upstream.status === 400 && thinking) {
+          thinking = false // this model does not take the thinking setting: ask again without it
+          continue
+        }
+        if (upstream.status === 503 && attempt === 0) {
+          await new Promise((r) => setTimeout(r, 800)) // briefly overloaded: one quick retry
+          continue
+        }
+        break
+      }
+      if (!upstream || upstream.status !== 404) break // only a missing model moves on to the next one
     }
+    if (!upstream) return res.status(504).json({ error: 'timeout' })
     if (!upstream.ok) return res.status(502).json({ error: 'upstream', status: upstream.status })
     const json = await upstream.json()
-    const text = json.candidates?.[0]?.content?.parts?.[0]?.text
+    const text = (json.candidates?.[0]?.content?.parts ?? []).find((p) => typeof p.text === 'string' && !p.thought)?.text
     if (!text) return res.status(502).json({ error: 'empty' })
     return res.status(200).json(normalize(JSON.parse(text)))
-  } catch {
-    return res.status(502).json({ error: 'upstream' })
+  } catch (error) {
+    return res.status(error?.name === 'TimeoutError' ? 504 : 502).json({ error: error?.name === 'TimeoutError' ? 'timeout' : 'upstream' })
   }
+}
+
+function callGemini(key, model, mimeType, image, thinking, timeoutMs) {
+  const generationConfig = { responseMimeType: 'application/json', responseSchema: SCHEMA, temperature: 0.1 }
+  if (thinking) generationConfig.thinkingConfig = { thinkingLevel: 'low' }
+  return fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+    body: JSON.stringify({
+      contents: [{ parts: [{ inline_data: { mime_type: mimeType, data: image } }, { text: PROMPT }] }],
+      generationConfig,
+    }),
+    signal: AbortSignal.timeout(Math.min(40_000, timeoutMs)),
+  })
 }
