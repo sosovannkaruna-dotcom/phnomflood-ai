@@ -6,7 +6,8 @@
 //
 // Needs GEMINI_API_KEY in the Vercel project's environment variables (never a VITE_ variable,
 // so the key stays on the server). GEMINI_MODEL is optional. Without a key it answers 503
-// and the app files the report as unverified.
+// and the app files the report as unverified. If the configured model has been retired (404),
+// it falls back to the current stable Flash model, then to Google's always-current alias.
 
 const MAX_BASE64 = 4_000_000 // about 3 MB of image
 const ALLOWED = new Set(['image/jpeg', 'image/png', 'image/webp'])
@@ -39,6 +40,7 @@ const SCHEMA = {
 }
 
 const DEFAULT_CM = { ankle: 10, knee: 25, waist: 45 }
+const FALLBACK_MODELS = ['gemini-3.8-flash', 'gemini-flash-latest']
 
 function rateLimited(ip) {
   const now = Date.now()
@@ -89,17 +91,22 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'bad_image' })
   if (!ALLOWED.has(mimeType)) return res.status(400).json({ error: 'bad_type' })
 
-  const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash'
+  const models = [...new Set([process.env.GEMINI_MODEL, ...FALLBACK_MODELS].filter(Boolean))]
+  const payload = JSON.stringify({
+    contents: [{ parts: [{ inline_data: { mime_type: mimeType, data: image } }, { text: PROMPT }] }],
+    generationConfig: { responseMimeType: 'application/json', responseSchema: SCHEMA, temperature: 0.1 },
+  })
   try {
-    const upstream = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-      body: JSON.stringify({
-        contents: [{ parts: [{ inline_data: { mime_type: mimeType, data: image } }, { text: PROMPT }] }],
-        generationConfig: { responseMimeType: 'application/json', responseSchema: SCHEMA, temperature: 0.1 },
-      }),
-      signal: AbortSignal.timeout(20_000),
-    })
+    let upstream = null
+    for (const model of models) {
+      upstream = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+        body: payload,
+        signal: AbortSignal.timeout(20_000),
+      })
+      if (upstream.status !== 404) break // only a missing model moves on to the next one
+    }
     if (!upstream.ok) return res.status(502).json({ error: 'upstream', status: upstream.status })
     const json = await upstream.json()
     const text = json.candidates?.[0]?.content?.parts?.[0]?.text

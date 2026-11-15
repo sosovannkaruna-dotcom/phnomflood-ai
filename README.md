@@ -34,7 +34,7 @@ Environment Variables) and in `.env` for local development (see `.env.example`):
 
 1. **Photo check:** `GEMINI_API_KEY` from https://aistudio.google.com/apikey. It is read only by
    the server function `api/verify-photo.js` (Vercel runs it; `npm run dev` serves it too), so it
-   never reaches the browser. Optional `GEMINI_MODEL`, default `gemini-2.5-flash`.
+   never reaches the browser. Optional `GEMINI_MODEL`, default `gemini-3.8-flash`, falling back to `gemini-flash-latest` if a model is retired.
 2. **Shared reports:** create a free Supabase project, run `supabase/schema.sql` in its SQL editor,
    then set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. The anon key is public by design:
    row-level security only lets it read the last 24 hours, add reports inside Phnom Penh, and
