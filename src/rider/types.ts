@@ -1,4 +1,4 @@
-import type { DepthId, FloodReport } from '../command/types'
+import type { DepthId, FloodReport } from '../shared/types'
 
 export type VehicleId = 'moto' | 'tuktuk' | 'car'
 export type MapMode = 'depth' | 'passability'

@@ -2,9 +2,9 @@ import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
 import maplibregl, { type GeoJSONSource, type Map as MlMap, type Marker } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import type { Feature, FeatureCollection, LineString, Point } from 'geojson'
-import { RIDER_MAP_STYLE } from '../../command/mapStyle'
+import { RIDER_MAP_STYLE } from '../../shared/mapStyle'
 import { DEPTHS } from '../../lib/severity'
-import type { FloodReport } from '../../command/types'
+import type { FloodReport } from '../../shared/types'
 import type { LatLng, MapMode, Passability, Preset, RouteEntry } from '../types'
 import { floodSegment, passability } from '../lib/trip'
 
@@ -14,7 +14,7 @@ const collection = <G extends LineString | Point>(features: Feature<G>[]): Featu
 const EMPTY = collection<LineString>([])
 
 /** Room for the top HUD, the right-edge controls and the collapsed bottom sheet. */
-const PADDING = { top: 168, bottom: 268, left: 28, right: 64 }
+const PADDING = { top: 168, bottom: 284, left: 28, right: 64 }
 
 export interface RiderMapHandle {
   recenter: () => void
@@ -155,7 +155,7 @@ const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap({ preset, e
       })
       map.addLayer({ id: 'alt-lines', type: 'line', source: 'alternatives', layout: round, paint: { 'line-color': color, 'line-width': 4, 'line-opacity': 0.7 } })
       map.addLayer({ id: 'standard-line', type: 'line', source: 'standard', layout: round, paint: { 'line-color': color, 'line-width': 3.5, 'line-dasharray': [0.6, 2.2], 'line-opacity': 0.9 } })
-      map.addLayer({ id: 'active-casing', type: 'line', source: 'active', layout: round, paint: { 'line-color': '#090A0F', 'line-width': 10 } })
+      map.addLayer({ id: 'active-casing', type: 'line', source: 'active', layout: round, paint: { 'line-color': '#0A0A0B', 'line-width': 10 } })
       map.addLayer({ id: 'active-line', type: 'line', source: 'active', layout: round, paint: { 'line-color': color, 'line-width': 5.5 } })
       // Flood segments sit on top of the roads they cover
       map.addLayer({ id: 'seg-wet', type: 'line', source: 'segments', filter: ['==', ['get', 'kind'], 'wet'], layout: round, paint: { 'line-color': '#0EA5E9', 'line-width': 4, 'line-dasharray': [1, 1.8] } })
@@ -165,7 +165,7 @@ const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap({ preset, e
       // Rider puck with heading cone
       const el = document.createElement('div')
       el.className = 'rd-puck'
-      el.innerHTML = '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 32 12 2a36 36 0 0 1 40 0Z" fill="#0EA5E9" fill-opacity="0.28"/><circle cx="32" cy="32" r="10" fill="#090A0F"/><circle cx="32" cy="32" r="7.5" fill="#0EA5E9" stroke="#F4F4F5" stroke-width="2"/><path d="M32 26.500 35.500 34 32 32.500 28.500 34Z" fill="#F4F4F5"/></svg>'
+      el.innerHTML = '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 32 12 2a36 36 0 0 1 40 0Z" fill="#F4F4F5" fill-opacity="0.22"/><circle cx="32" cy="32" r="10" fill="#0A0A0B"/><circle cx="32" cy="32" r="7.5" fill="#F4F4F5" stroke="#0A0A0B" stroke-width="2"/><path d="M32 26.500 35.500 34 32 32.500 28.500 34Z" fill="#0A0A0B"/></svg>'
       el.setAttribute('role', 'img')
       el.setAttribute('aria-label', 'Your position')
       const at = latest.current.position

@@ -8,7 +8,7 @@
 //   1. LIVE  — a real uploaded file is sent to Gemini when VITE_GEMINI_API_KEY is
 //              set in .env. (For production, move this call behind a server or
 //              Supabase Edge Function so the key never ships to the browser.)
-//   2. DEMO  — three bundled scenario photos with fixed, pre-written verdicts so
+//   2. DEMO  — four bundled scenario photos with fixed, pre-written verdicts so
 //              the pitch video works offline. These verdicts are simulated, but
 //              they never read the user's selection.
 //
@@ -32,33 +32,48 @@ const RISK = {
 /** Bundled demo scenarios. `verdict` is what the image shows, whatever the user claims. */
 export const DEMO_SCENARIOS = [
   {
+    id: 'ankle',
+    title: 'Shallow flood',
+    hint: 'Water at wheel-hub height',
+    image: '/scenarios/ankle-deep-puddle.jpg',
+    credit: 'Biplab Sau / Pexels',
+    verdict: {
+      isFlood: true,
+      depth: 'ankle',
+      depthCm: 12,
+      cue: 'water reaching the bicycle wheel hubs',
+      reference: { object: 'Bicycle Wheel Hub', submersionPct: 30, debris: false },
+      drainage: { status: 'Drain Inlet Not Visible Under Moving Water', blocked: false, confidence: 0.55 },
+    },
+  },
+  {
     id: 'knee',
-    title: 'Flooded street',
-    hint: 'Knee-deep + clogged grate',
+    title: 'Stalled bike',
+    hint: 'Seat-height water',
     image: '/scenarios/knee-deep-flood.jpg',
-    credit: 'Albeiro Rodas / Wikimedia Commons, CC BY-SA 3.0',
+    credit: 'Dibakar Roy / Pexels',
     verdict: {
       isFlood: true,
       depth: 'knee',
       depthCm: 28,
-      cue: 'tire submersion',
-      reference: { object: 'Motorbike Wheel Hub', submersionPct: 50, debris: true },
-      drainage: { status: 'Plastic Debris Blocking Curb Grate', blocked: true, confidence: 0.94 },
+      cue: 'water reaching the seat of a stalled motorbike',
+      reference: { object: 'Motorbike Footpegs and Rear Wheel', submersionPct: 60, debris: false },
+      drainage: { status: 'Road Fully Submerged, Drain Not Visible', blocked: false, confidence: 0.58 },
     },
   },
   {
-    id: 'ankle',
-    title: 'Minor puddle',
-    hint: 'Shallow surface water',
-    image: '/scenarios/ankle-deep-puddle.jpg',
-    credit: 'Julie Rigsby / Wikimedia Commons, CC BY 2.0',
+    id: 'waist',
+    title: 'Deep water',
+    hint: 'Thigh to waist depth',
+    image: '/scenarios/waist-deep-flood.jpg',
+    credit: 'Lâm Trần / Pexels',
     verdict: {
       isFlood: true,
-      depth: 'ankle',
-      depthCm: 8,
-      cue: 'water below pedestrians’ ankles',
-      reference: { object: 'Pedestrian Lower Leg', submersionPct: 18, debris: false },
-      drainage: { status: 'No Blockage Visible — Water Draining', blocked: false, confidence: 0.88 },
+      depth: 'waist',
+      depthCm: 45,
+      cue: 'water at thigh height on people wading',
+      reference: { object: 'Pedestrian Thigh', submersionPct: 55, debris: false },
+      drainage: { status: 'Street Fully Submerged, Drain Not Visible', blocked: false, confidence: 0.6 },
     },
   },
   {

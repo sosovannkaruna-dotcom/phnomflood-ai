@@ -1,4 +1,4 @@
-// Ultra-dark, low-contrast basemap drawn from OpenFreeMap vector tiles
+// Near-black neutral basemap (zinc, no blue cast; only water is blue) drawn from OpenFreeMap vector tiles
 // (OpenMapTiles schema, OpenStreetMap data, no API key).
 import type { StyleSpecification } from 'maplibre-gl'
 
@@ -11,13 +11,13 @@ export const MAP_STYLE: StyleSpecification = {
     omt: { type: 'vector', url: 'https://tiles.openfreemap.org/planet' },
   },
   layers: [
-    { id: 'land', type: 'background', paint: { 'background-color': '#0D0F14' } },
+    { id: 'land', type: 'background', paint: { 'background-color': '#0B0B0C' } },
     {
       id: 'green',
       type: 'fill',
       source: 'omt',
       'source-layer': 'landcover',
-      paint: { 'fill-color': '#0F1218', 'fill-opacity': 0.9 },
+      paint: { 'fill-color': '#0E0E10', 'fill-opacity': 0.9 },
     },
     // Tonle Sap, Mekong, Bassac and the remaining lakes
     { id: 'water', type: 'fill', source: 'omt', 'source-layer': 'water', paint: { 'fill-color': '#0C4A6E' } },
@@ -41,7 +41,7 @@ export const MAP_STYLE: StyleSpecification = {
       source: 'omt',
       'source-layer': 'building',
       minzoom: 14,
-      paint: { 'fill-color': '#11141B', 'fill-opacity': 0.8 },
+      paint: { 'fill-color': '#111113', 'fill-opacity': 0.8 },
     },
     {
       id: 'roads-minor',
@@ -51,7 +51,7 @@ export const MAP_STYLE: StyleSpecification = {
       minzoom: 12.5,
       filter: ['in', ['get', 'class'], ['literal', ['minor', 'service', 'tertiary']]],
       layout: { 'line-cap': 'round', 'line-join': 'round' },
-      paint: { 'line-color': '#1B1F2A', 'line-width': ['interpolate', ['linear'], ['zoom'], 12, 0.4, 16, 3.5] },
+      paint: { 'line-color': '#1C1C20', 'line-width': ['interpolate', ['linear'], ['zoom'], 12, 0.4, 16, 3.5] },
     },
     {
       id: 'roads-major',
@@ -60,7 +60,7 @@ export const MAP_STYLE: StyleSpecification = {
       'source-layer': 'transportation',
       filter: ['in', ['get', 'class'], ['literal', ['motorway', 'trunk', 'primary', 'secondary']]],
       layout: { 'line-cap': 'round', 'line-join': 'round' },
-      paint: { 'line-color': '#252A37', 'line-width': ['interpolate', ['linear'], ['zoom'], 9, 0.5, 12, 1.2, 16, 6] },
+      paint: { 'line-color': '#2A2A30', 'line-width': ['interpolate', ['linear'], ['zoom'], 9, 0.5, 12, 1.2, 16, 6] },
     },
     {
       id: 'road-names',
@@ -69,7 +69,7 @@ export const MAP_STYLE: StyleSpecification = {
       'source-layer': 'transportation_name',
       minzoom: 14,
       layout: { 'symbol-placement': 'line', 'text-field': LATIN_NAME, 'text-font': ['Noto Sans Regular'], 'text-size': 10 },
-      paint: { 'text-color': '#565D6D', 'text-halo-color': '#0D0F14', 'text-halo-width': 1 },
+      paint: { 'text-color': '#6B6B73', 'text-halo-color': '#0B0B0C', 'text-halo-width': 1 },
     },
     {
       id: 'water-names',
@@ -87,7 +87,7 @@ export const MAP_STYLE: StyleSpecification = {
       minzoom: 12.5,
       filter: ['in', ['get', 'class'], ['literal', ['suburb', 'quarter', 'neighbourhood', 'village']]],
       layout: { 'text-field': LATIN_NAME, 'text-font': ['Noto Sans Regular'], 'text-size': 10, 'text-max-width': 7 },
-      paint: { 'text-color': '#4B5262', 'text-halo-color': '#0D0F14', 'text-halo-width': 1 },
+      paint: { 'text-color': '#5A5A62', 'text-halo-color': '#0B0B0C', 'text-halo-width': 1 },
     },
   ],
 }
@@ -104,10 +104,10 @@ export const RIDER_MAP_STYLE: StyleSpecification = {
       layer.id === 'roads-major'
         ? ({
             ...layer,
-            paint: { 'line-color': '#3A4358', 'line-width': ['interpolate', ['linear'], ['zoom'], 9, 0.8, 12, 2, 16, 9] },
+            paint: { 'line-color': '#46464E', 'line-width': ['interpolate', ['linear'], ['zoom'], 9, 0.8, 12, 2, 16, 9] },
           } as typeof layer)
         : layer.id === 'roads-minor'
-          ? ({ ...layer, paint: { 'line-color': '#222837', 'line-width': ['interpolate', ['linear'], ['zoom'], 12, 0.5, 16, 4] } } as typeof layer)
+          ? ({ ...layer, paint: { 'line-color': '#26262C', 'line-width': ['interpolate', ['linear'], ['zoom'], 12, 0.5, 16, 4] } } as typeof layer)
           : layer,
     ),
     {
@@ -118,7 +118,7 @@ export const RIDER_MAP_STYLE: StyleSpecification = {
       minzoom: 12,
       filter: ['in', ['get', 'class'], ['literal', ['motorway', 'trunk', 'primary', 'secondary']]],
       layout: { 'symbol-placement': 'line', 'text-field': LATIN_NAME, 'text-font': ['Noto Sans Regular'], 'text-size': 12, 'symbol-spacing': 320 },
-      paint: { 'text-color': '#AEB6C6', 'text-halo-color': '#0D0F14', 'text-halo-width': 1.4 },
+      paint: { 'text-color': '#C4C4CB', 'text-halo-color': '#0B0B0C', 'text-halo-width': 1.4 },
     },
   ],
 }

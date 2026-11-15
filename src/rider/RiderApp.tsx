@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
-import { LocateFixed, Minus, Plus, Volume2, VolumeX } from 'lucide-react'
+import { Crosshair as LocateFixed, Minus, Plus, SpeakerHigh as Volume2, SpeakerX as VolumeX } from '@phosphor-icons/react'
 import RiderMap, { type RiderMapHandle } from './components/RiderMap'
 import TopHud from './components/TopHud'
 import BottomSheet from './components/BottomSheet'
 import ReportDrawer from './components/ReportDrawer'
 import { useTrip } from './hooks/useTrip'
 import { placeAt } from './lib/trip'
-import { useFlood } from '../command/store'
-import type { FloodReport } from '../command/types'
+import { useFlood } from '../shared/useFlood'
+import type { FloodReport } from '../shared/types'
 import type { MapMode, VisionResult } from './types'
 
 /** Short two-tone alert through Web Audio (no sound file needed). */
@@ -33,7 +33,7 @@ function beep() {
 }
 
 /** Rider / field navigation app: full-bleed map with a three-zone HUD. */
-export default function RiderApp({ onOpenCity }: { onOpenCity: () => void }) {
+export default function RiderApp({ onHome }: { onHome: () => void }) {
   const { reports, addReport, addRerouted, confirmReport, clearReport } = useFlood()
   const trip = useTrip(reports, () => addRerouted(24 + Math.floor(Math.random() * 18)))
   const [mode, setMode] = useState<MapMode>('depth')
@@ -71,10 +71,10 @@ export default function RiderApp({ onOpenCity }: { onOpenCity: () => void }) {
     [addReport, place, trip.position],
   )
 
-  const control = 'cc-panel rd-press grid h-11 w-11 place-items-center rounded-lg text-zinc-100'
+  const control = 'rd-press grid h-11 w-11 place-items-center text-zinc-100'
 
   return (
-    <div className="rd-root relative h-full w-full select-none overflow-hidden bg-[#090A0F] text-zinc-100">
+    <div className="rd-root relative h-full w-full select-none overflow-hidden bg-void text-zinc-100">
       <RiderMap
         ref={map}
         preset={trip.preset}
@@ -87,10 +87,10 @@ export default function RiderApp({ onOpenCity }: { onOpenCity: () => void }) {
         bearing={trip.bearing}
       />
 
-      <TopHud trip={trip} place={place} mode={mode} onToggleMode={() => setMode((m) => (m === 'depth' ? 'passability' : 'depth'))} onOpenCity={onOpenCity} />
+      <TopHud trip={trip} place={place} mode={mode} onToggleMode={() => setMode((m) => (m === 'depth' ? 'passability' : 'depth'))} onHome={onHome} />
 
       {/* Right-edge map controls, in thumb reach just above the sheet */}
-      <div className="rd-controls absolute right-3 z-10 flex flex-col gap-2">
+      <div className="rd-controls cc-panel absolute right-3 z-10 flex flex-col divide-y divide-white/[0.12]">
         <button onClick={() => map.current?.recenter()} aria-label="Re-centre on my position" className={control}>
           <LocateFixed className="h-5 w-5" />
         </button>

@@ -6,7 +6,7 @@ import { GAZETTEER as RAW_GAZETTEER } from '../../data/gazetteer'
 import { analyseCandidate, etaMinutes } from '../../lib/routing'
 import { distanceToPath, haversine, nearestPlace, pathLength, pointAlong } from '../../lib/geo'
 import { DEPTHS } from '../../lib/severity'
-import type { FloodReport } from '../../command/types'
+import type { FloodReport } from '../../shared/types'
 import type { Candidate, FloodSegment, LatLng, Maneuver, Passability, Place, Preset, RouteEntry, VehicleId } from '../types'
 import { MANEUVERS } from '../data/maneuvers'
 

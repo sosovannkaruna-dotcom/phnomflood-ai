@@ -1,0 +1,46 @@
+// Shared store (src/store/FloodStore.jsx) as seen from TypeScript.
+export type DepthId = 'clear' | 'ankle' | 'knee' | 'waist'
+
+export interface FloodReport {
+  id: string
+  name: string
+  area: string
+  khan: string
+  sangkat: string
+  lat: number
+  lng: number
+  depth: DepthId
+  source: string
+  createdAt: number
+  isNew?: boolean
+  confirmations?: number
+  photo?: string | null
+  ai?: { depthCm: number; drainage: { status: string; blocked: boolean; confidence: number } } | null | undefined
+}
+
+export interface Ticket {
+  id: string
+  name: string
+  khan: string
+  sangkat: string
+  lat: number
+  lng: number
+  diagnosis: string
+  frequency: number
+  urgency: number
+  crew: string
+  status: 'open' | 'dispatched'
+  isNew?: boolean
+}
+
+export interface FloodApi {
+  reports: FloodReport[]
+  queue: Ticket[]
+  ridersRerouted: number
+  addReport: (report: FloodReport) => void
+  addRerouted: (count: number) => void
+  confirmReport: (id: string) => void
+  clearReport: (id: string) => void
+  dispatchCrew: (id: string) => void
+  resetDemo: () => void
+}

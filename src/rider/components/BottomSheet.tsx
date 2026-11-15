@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Bike, Car, CarTaxiFront, Check, Search, ShieldCheck, TriangleAlert, X } from 'lucide-react'
+import { Motorcycle as Bike, Car, Taxi as CarTaxiFront, Check, MagnifyingGlass as Search, ShieldCheck, Warning as TriangleAlert, ArrowRight, X } from '@phosphor-icons/react'
 import { DEPTHS } from '../../lib/severity'
-import type { FloodReport } from '../../command/types'
+import type { FloodReport } from '../../shared/types'
 import type { LatLng, VehicleId } from '../types'
 import type { Trip } from '../hooks/useTrip'
 import { PRESETS, exposure, metresBetween, passability, routeLengthKm } from '../lib/trip'
@@ -13,7 +13,6 @@ const VEHICLES: { id: VehicleId; label: string; Icon: typeof Bike }[] = [
   { id: 'car', label: 'Car', Icon: Car },
 ]
 const STATUS_COLOR = { dry: '#10B981', caution: '#F59E0B', blocked: '#EF4444' }
-const label = 'text-[11px] font-medium uppercase tracking-wider text-zinc-400'
 
 function ago(timestamp: number) {
   const minutes = Math.max(0, Math.round((Date.now() - timestamp) / 60000))
@@ -44,7 +43,7 @@ export default function BottomSheet({ trip, reports, position, onReport, onConfi
     .sort((a, b) => a.metres - b.metres)
 
   return (
-    <div className="pb-safe absolute inset-x-0 bottom-0 z-20 rounded-t-2xl border-t border-white/[0.08] bg-[#0F1117]/[0.88] backdrop-blur-xl" style={{ boxShadow: 'inset 0 1px 0 0 rgba(255,255,255,0.06)' }}>
+    <div className="pb-safe absolute inset-x-0 bottom-0 z-20 border-t border-white/[0.15] bg-void/95 backdrop-blur-md">
       {/* Drag handle: drag or tap to change detent */}
       <motion.button
         onClick={() => setExpanded((e) => !e)}
@@ -56,14 +55,14 @@ export default function BottomSheet({ trip, reports, position, onReport, onConfi
         aria-label={expanded ? 'Collapse sheet' : 'Expand sheet for routes and nearby alerts'}
         className="flex h-7 w-full touch-none items-center justify-center"
       >
-        <span className="h-1 w-9 rounded-full bg-white/20" />
+        <span className="h-1 w-10 bg-white/25" />
       </motion.button>
 
-      <div className="space-y-3 px-3 pb-3">
+      <div className="space-y-2 px-3 pb-3">
         {searching ? (
           /* Destination picker */
           <div className="space-y-2">
-            <div className="flex h-12 items-center gap-2 rounded-lg border border-sky-500/60 bg-black/30 px-3">
+            <div className="flex h-12 items-center gap-2 border border-signal bg-slab px-3">
               <Search className="h-5 w-5 shrink-0 text-zinc-400" />
               <input
                 autoFocus
@@ -73,7 +72,7 @@ export default function BottomSheet({ trip, reports, position, onReport, onConfi
                 aria-label="Destination"
                 className="h-full min-w-0 flex-1 select-text bg-transparent text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none"
               />
-              <button onClick={() => setSearching(false)} aria-label="Close search" className="rd-press grid h-9 w-9 place-items-center rounded text-zinc-400">
+              <button onClick={() => setSearching(false)} aria-label="Close search" className="rd-press grid h-9 w-9 place-items-center text-zinc-400">
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -86,49 +85,51 @@ export default function BottomSheet({ trip, reports, position, onReport, onConfi
                       setSearching(false)
                       setQuery('')
                     }}
-                    className="rd-press flex min-h-[52px] w-full items-center justify-between gap-3 border-t border-white/[0.08] px-1 text-left"
+                    className="rd-press flex min-h-[52px] w-full items-center justify-between gap-3 border-t border-white/[0.12] px-1 text-left"
                   >
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-medium text-zinc-100">{p.destination.name}</span>
                       <span className="block truncate text-xs text-zinc-400">from {p.origin.name}</span>
                     </span>
-                    {p.id === preset.id && <Check className="h-5 w-5 shrink-0 text-sky-400" />}
+                    {p.id === preset.id && <Check className="h-5 w-5 shrink-0 text-flare" />}
                   </button>
                 </li>
               ))}
-              {!matches.length && <li className="border-t border-white/[0.08] px-1 py-3 text-sm text-zinc-400">No saved trip matches. Try “market” or “RUPP”.</li>}
+              {!matches.length && <li className="border-t border-white/[0.12] px-1 py-3 text-sm text-zinc-400">No saved trip matches. Try “market” or “RUPP”.</li>}
             </ul>
           </div>
         ) : (
           <>
-            <button onClick={() => setSearching(true)} className="rd-press flex h-12 w-full items-center gap-2 rounded-lg border border-white/[0.08] bg-black/30 px-3 text-left">
-              <Search className="h-5 w-5 shrink-0 text-zinc-400" />
-              <span className="min-w-0 flex-1 truncate text-sm">
-                <span className="font-medium text-zinc-100">{preset.destination.short}</span>
-                <span className="text-zinc-500"> · Where to? Avoid flooded streets...</span>
+            {/* Destination: a labelled readout, tap to change */}
+            <button onClick={() => setSearching(true)} className="rd-press flex h-14 w-full items-stretch border border-white/[0.15] bg-slab text-left">
+              <span className="grid w-12 shrink-0 place-items-center border-r border-white/[0.12] text-zinc-400">
+                <Search className="h-5 w-5" />
               </span>
-              <span className="shrink-0 font-mono text-sm text-zinc-100">{active.minutes} min</span>
+              <span className="flex min-w-0 flex-1 flex-col justify-center px-3">
+                <span className="tl-label">Destination</span>
+                <span className="tl-title truncate text-base text-zinc-50">{preset.destination.short}</span>
+              </span>
+              <span className="flex shrink-0 flex-col items-end justify-center border-l border-white/[0.12] px-3">
+                <span className="tl-label">ETA</span>
+                <span className="font-mono text-base text-zinc-50">{active.minutes} min</span>
+              </span>
             </button>
 
-            {/* Quick filters */}
-            <div className="rd-noscroll flex gap-2 overflow-x-auto" role="group" aria-label="Route filters">
+            {/* Route filters: one hairline-divided row */}
+            <div className="rd-noscroll flex divide-x divide-white/[0.12] overflow-x-auto border border-white/[0.15]" role="group" aria-label="Route filters">
               <button
                 onClick={trip.toggleDryOnly}
                 aria-pressed={dryOnly}
-                className={`rd-press flex h-12 shrink-0 items-center gap-2 rounded-lg border px-3 text-sm font-medium ${
-                  dryOnly ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400' : 'border-white/[0.08] text-zinc-300'
-                }`}
+                className={`rd-press flex h-12 shrink-0 items-center gap-2 px-3 text-sm font-medium ${dryOnly ? 'bg-emerald-500/15 text-emerald-400' : 'text-zinc-300'}`}
               >
-                <ShieldCheck className="h-5 w-5" /> Dry Routes Only
+                <ShieldCheck className="h-5 w-5" /> Dry only
               </button>
               {VEHICLES.map(({ id, label: name, Icon }) => (
                 <button
                   key={id}
                   onClick={() => trip.setVehicle(id)}
                   aria-pressed={vehicle === id}
-                  className={`rd-press flex h-12 shrink-0 items-center gap-2 rounded-lg border px-3 text-sm font-medium ${
-                    vehicle === id ? 'border-sky-500/60 bg-sky-500/10 text-sky-400' : 'border-white/[0.08] text-zinc-300'
-                  }`}
+                  className={`rd-press flex h-12 shrink-0 items-center gap-2 px-3 text-sm font-medium ${vehicle === id ? 'bg-signal text-zinc-50' : 'text-zinc-300'}`}
                 >
                   <Icon className="h-5 w-5" /> {name}
                 </button>
@@ -136,11 +137,13 @@ export default function BottomSheet({ trip, reports, position, onReport, onConfi
             </div>
 
             {/* Primary action */}
-            <button
-              onClick={onReport}
-              className="rd-press flex h-14 w-full items-center justify-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/15 text-base font-semibold tracking-wide text-amber-400 hover:bg-amber-500/25"
-            >
-              <TriangleAlert className="h-5 w-5" /> REPORT FLOOD
+            <button onClick={onReport} className="tl-cta h-14 text-base">
+              <span>
+                <TriangleAlert className="h-5 w-5" /> Report flood
+              </span>
+              <span>
+                <ArrowRight className="h-5 w-5" />
+              </span>
             </button>
           </>
         )}
@@ -157,36 +160,41 @@ export default function BottomSheet({ trip, reports, position, onReport, onConfi
             transition={{ type: 'spring', stiffness: 320, damping: 34 }}
             className="overflow-hidden"
           >
-            <div className="cc-scroll max-h-[38dvh] space-y-4 overflow-y-auto border-t border-white/[0.08] px-3 py-3">
+            <div className="cc-scroll max-h-[38dvh] space-y-5 overflow-y-auto overflow-x-hidden border-t border-white/[0.12] px-3 py-4">
               <section>
-                <p className={`${label} pb-2`}>Routes · time vs flood exposure</p>
-                <ul className="space-y-2">
+                <h3 className="tl-label pb-2">Routes, time vs flood exposure</h3>
+                <ul className="tl-grid border border-white/[0.12]">
                   {entries.map((entry, i) => {
                     const status = passability(entry)
                     const selected = entry.candidate.id === active.candidate.id
                     return (
                       <li key={entry.candidate.id}>
                         {recalculating ? (
-                          <div className="cc-shimmer h-[60px] rounded-lg" />
+                          <div className="cc-shimmer h-[64px]" />
                         ) : (
                           <button
                             onClick={() => trip.chooseRoute(entry.candidate.id)}
                             aria-pressed={selected}
-                            className={`rd-press flex min-h-[60px] w-full items-center gap-3 rounded-lg border px-3 py-2 text-left ${
-                              selected ? 'border-white/25 bg-white/[0.06]' : 'border-white/[0.08]'
-                            }`}
+                            className={`rd-press flex min-h-[64px] w-full items-stretch text-left ${selected ? 'bg-white/[0.07]' : ''}`}
                           >
-                            <span className="h-9 w-1 shrink-0 rounded-full" style={{ background: STATUS_COLOR[status] }} />
-                            <span className="min-w-0 flex-1">
-                              <span className="block text-sm font-medium text-zinc-100">
-                                Route {String.fromCharCode(65 + i)}: <span className="font-mono">{entry.minutes} min</span> •{' '}
-                                <span style={{ color: STATUS_COLOR[status] }}>{exposure(entry)}</span>
+                            <span className="w-1.5 shrink-0" style={{ background: STATUS_COLOR[status] }} />
+                            <span className="flex min-w-0 flex-1 flex-col justify-center px-3 py-2">
+                              <span className="flex items-baseline gap-2 text-sm font-medium text-zinc-100">
+                                <span className="tl-title text-base">Route {String.fromCharCode(65 + i)}</span>
+                                <span className="font-mono">{entry.minutes} min</span>
+                                <span className="tl-label" style={{ color: STATUS_COLOR[status] }}>
+                                  {exposure(entry)}
+                                </span>
                               </span>
-                              <span className="block truncate text-xs text-zinc-400">
+                              <span className="mt-0.5 block truncate text-xs text-zinc-400">
                                 via {entry.candidate.via} · <span className="font-mono">{routeLengthKm(entry.candidate)} km</span>
                               </span>
                             </span>
-                            {selected && <Check className="h-5 w-5 shrink-0 text-zinc-100" />}
+                            {selected && (
+                              <span className="grid w-12 shrink-0 place-items-center border-l border-white/[0.12]">
+                                <Check className="h-5 w-5 text-zinc-50" />
+                              </span>
+                            )}
                           </button>
                         )}
                       </li>
@@ -196,13 +204,13 @@ export default function BottomSheet({ trip, reports, position, onReport, onConfi
               </section>
 
               <section>
-                <p className={`${label} pb-2`}>Rider reports within 2 km</p>
+                <h3 className="tl-label pb-2">Rider reports within 2 km</h3>
                 {nearby.length === 0 && <p className="text-sm text-zinc-400">No flood reports near you.</p>}
-                <ul className="space-y-2">
+                <ul className="tl-grid border border-white/[0.12] empty:hidden">
                   {nearby.map(({ report, metres }) => {
                     const depth = DEPTHS[report.depth]
                     return (
-                      <li key={report.id} className="rounded-lg border border-white/[0.08] p-3">
+                      <li key={report.id} className="p-3">
                         <div className="flex items-baseline justify-between gap-2">
                           <p className="truncate text-sm font-medium text-zinc-100">{report.name}</p>
                           <p className="shrink-0 font-mono text-xs text-zinc-400">{ago(report.createdAt)}</p>
@@ -215,11 +223,11 @@ export default function BottomSheet({ trip, reports, position, onReport, onConfi
                             {report.confirmations ? ` · ${report.confirmations} confirmed` : ''}
                           </span>
                         </p>
-                        <div className="mt-2 grid grid-cols-2 gap-2">
-                          <button onClick={() => onConfirm(report.id)} className="rd-press h-12 rounded-lg border border-white/[0.12] text-sm font-medium text-zinc-100">
-                            Still Flooded
+                        <div className="tl-grid mt-3 grid-cols-2 border border-white/[0.12]">
+                          <button onClick={() => onConfirm(report.id)} className="rd-press h-12 text-sm font-medium text-zinc-100">
+                            Still flooded
                           </button>
-                          <button onClick={() => onClear(report.id)} className="rd-press h-12 rounded-lg border border-emerald-500/40 text-sm font-medium text-emerald-400">
+                          <button onClick={() => onClear(report.id)} className="rd-press h-12 text-sm font-medium text-emerald-400">
                             Cleared
                           </button>
                         </div>

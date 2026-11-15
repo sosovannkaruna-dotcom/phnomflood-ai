@@ -1,5 +1,4 @@
-// Typed view of the shared JavaScript store, so the command center sees the same
-// flood reports and drain tickets as the rider app.
+// Typed view of the shared JavaScript flood store.
 import { useFlood as useFloodUntyped } from '../store/FloodStore'
 import type { FloodApi } from './types'
 

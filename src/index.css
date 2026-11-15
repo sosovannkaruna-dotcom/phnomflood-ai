@@ -2,10 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ═══════════ PhnomFlood design system: Tactile Obsidian & Slate ═══════════
-   One recipe for both the rider app and the city command center.
-   Base #090A0F · frosted panels · 1px hairlines · Inter + JetBrains Mono.
-   Colour is semantic only: emerald clear, amber caution, red impassable, sky hydrology. */
+/* ═══════════ PhnomFlood design system: Industrial Telemetry ═══════════
+   One recipe for the landing page and the rider app.
+   Substrate #0A0A0B · solid slabs · 1px hairlines · square corners.
+   Archivo (display) · Geist (text) · Geist Mono (every number and label).
+   One accent: hazard red. Data colour stays semantic: emerald clear, amber caution,
+   red impassable, sky hydrology. Motion: strong ease-out, under 300ms. */
 
 html,
 body,
@@ -15,25 +17,52 @@ body,
 
 body {
   margin: 0;
-  font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Geist Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
   color: #f4f4f5;
-  background: #090a0f;
+  background: #0a0a0b;
   color-scheme: dark;
   /* Digits never shift sideways as values update */
   font-variant-numeric: tabular-nums;
   overscroll-behavior: none;
 }
 
-/* One icon weight everywhere */
-.lucide {
-  stroke-width: 1.75;
-}
-
+/* Geist Mono carries every number, id and label */
 .font-mono,
 .cc-popup .maplibregl-popup-content {
-  font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  font-family: 'Geist Mono Variable', ui-monospace, 'SF Mono', Menlo, monospace;
   font-variant-numeric: tabular-nums;
+}
+
+/* Display type: Archivo at heavy weight and expanded width, tight tracking */
+.font-display {
+  font-family: 'Archivo Variable', 'Geist Variable', system-ui, sans-serif;
+  font-stretch: 112%;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 0.92;
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+/* One global film grain, fixed and inert so it never repaints with scroll */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+::selection {
+  background: #e8301c;
+  color: #0a0a0b;
 }
 
 /* Safe areas: keep HUD chrome clear of notches and home indicators */
@@ -46,29 +75,38 @@ body {
 
 /* ── Surfaces and controls ── */
 .cc-panel {
-  background: rgba(15, 17, 23, 0.88);
-  -webkit-backdrop-filter: blur(16px);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
+  /* Slab: near-opaque, hairline edge, no glow. Blur is light so the map still reads behind it. */
+  background: rgba(14, 14, 16, 0.94);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+@media (prefers-reduced-transparency: reduce) {
+  .cc-panel {
+    background: #0e0e10;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
 }
 .cc-btn {
-  transition: background-color 120ms ease, transform 120ms ease, color 120ms ease;
+  transition: background-color 150ms cubic-bezier(0.23, 1, 0.32, 1), transform 150ms cubic-bezier(0.23, 1, 0.32, 1), color 150ms cubic-bezier(0.23, 1, 0.32, 1);
 }
-.cc-btn:hover {
-  background-color: rgba(255, 255, 255, 0.06);
+@media (hover: hover) and (pointer: fine) {
+  .cc-btn:hover {
+    background-color: rgba(255, 255, 255, 0.07);
+  }
 }
 .cc-btn:active {
   transform: scale(0.98);
 }
 .cc-btn:focus-visible,
 .rd-press:focus-visible {
-  outline: 1px solid #0ea5e9;
-  outline-offset: 1px;
+  outline: 2px solid #e8301c;
+  outline-offset: 2px;
 }
 /* Field controls: a firm, fast press state */
 .rd-press {
-  transition: transform 100ms ease, background-color 120ms ease, border-color 120ms ease;
+  transition: transform 120ms cubic-bezier(0.23, 1, 0.32, 1), background-color 150ms ease, border-color 150ms ease;
   -webkit-tap-highlight-color: transparent;
 }
 .rd-press:active:not(:disabled) {
@@ -145,7 +183,7 @@ body {
   display: block;
   width: 12px;
   height: 12px;
-  background: #090a0f;
+  background: #0a0a0b;
   border: 1.5px solid var(--c);
   transform: rotate(45deg);
 }
@@ -176,7 +214,7 @@ body {
   cursor: pointer;
   border-radius: 9999px;
   background: var(--c);
-  border: 2px solid #090a0f;
+  border: 2px solid #0a0a0b;
   box-shadow: 0 0 0 1px var(--c);
 }
 /* MapLibre positions markers with transform, so new-marker animations must not touch it */
@@ -194,11 +232,11 @@ body {
 
 /* Drain ticket: urgency score flag */
 .cc-ticket {
-  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-family: 'Geist Mono Variable', ui-monospace, monospace;
   font-size: 10px;
   line-height: 1;
   padding: 3px 5px;
-  color: #090a0f;
+  color: #0a0a0b;
   background: var(--c);
   border-radius: 2px;
 }
@@ -224,7 +262,7 @@ body {
   background: transparent;
 }
 .cc-range:focus-visible {
-  outline: 1px solid #0ea5e9;
+  outline: 2px solid #e8301c;
 }
 
 /* ── Rider map markers ── */
@@ -245,13 +283,13 @@ body {
   width: 14px;
   height: 14px;
   border-radius: 9999px;
-  background: #090a0f;
+  background: #0a0a0b;
   border: 3px solid #f4f4f5;
 }
 .rd-end.is-destination {
   border-radius: 2px;
   background: #f4f4f5;
-  border-color: #090a0f;
+  border-color: #0a0a0b;
   box-shadow: 0 0 0 1.5px #f4f4f5;
 }
 
@@ -274,17 +312,17 @@ body {
 .rd-hazard[data-kind='caution'] > i {
   width: 10px;
   height: 10px;
-  border: 2px solid #090a0f;
+  border: 2px solid #0a0a0b;
   background: var(--c);
   box-shadow: 0 0 0 1px var(--c);
 }
 .rd-hazard > span {
-  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-family: 'Geist Mono Variable', ui-monospace, monospace;
   font-size: 12px;
   font-weight: 500;
   line-height: 1;
   padding: 3px 5px;
-  color: #090a0f;
+  color: #0a0a0b;
   background: var(--c);
   border-radius: 2px;
 }
@@ -298,7 +336,7 @@ body {
 
 /* Map controls sit just above the collapsed bottom sheet */
 .rd-controls {
-  bottom: calc(244px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(262px + env(safe-area-inset-bottom, 0px));
 }
 
 /* ── MapLibre chrome ── */
@@ -308,7 +346,7 @@ body {
 .cc-popup .maplibregl-popup-content {
   padding: 8px 10px;
   color: #f4f4f5;
-  background: rgba(15, 17, 23, 0.94);
+  background: rgba(14, 14, 16, 0.96);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 6px;
   box-shadow: none;
@@ -326,14 +364,14 @@ body {
   color: #a1a1aa;
 }
 .cc-popup .cc-popup-name {
-  font-family: Inter, system-ui, sans-serif;
+  font-family: 'Geist Variable', system-ui, sans-serif;
   font-size: 12px;
   font-weight: 500;
 }
 .maplibregl-ctrl-attrib {
   font-size: 10px;
   color: #a1a1aa;
-  background: rgba(15, 17, 23, 0.82) !important;
+  background: rgba(14, 14, 16, 0.86) !important;
 }
 .maplibregl-ctrl-attrib a {
   color: #d4d4d8;
@@ -364,7 +402,7 @@ body {
 .rd-root .maplibregl-ctrl-bottom-right {
   right: auto;
   left: 8px;
-  bottom: calc(244px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(262px + env(safe-area-inset-bottom, 0px));
 }
 
 /* Horizontal chip rows scroll without a visible bar */
@@ -374,3 +412,131 @@ body {
 .rd-noscroll::-webkit-scrollbar {
   display: none;
 }
+
+/* Reduced motion: keep state changes, drop travel and loops */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── Landing page ── */
+.ln-scan {
+  background-image: repeating-linear-gradient(0deg, transparent 0, transparent 3px, rgba(255, 255, 255, 0.025) 3px, rgba(255, 255, 255, 0.025) 4px);
+}
+.ln-halftone {
+  filter: grayscale(1) contrast(1.35) brightness(0.8);
+}
+.ln-halftone-wrap {
+  position: relative;
+  overflow: hidden;
+  background: #0a0a0b;
+}
+.ln-halftone-wrap::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(rgba(10, 10, 11, 0.85) 38%, transparent 40%);
+  background-size: 5px 5px;
+  mix-blend-mode: multiply;
+}
+@keyframes ln-marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+.ln-marquee {
+  animation: ln-marquee 48s linear infinite;
+}
+.ln-outline {
+  -webkit-text-stroke: 1.5px #f4f4f5;
+  color: transparent;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ln-marquee {
+    animation: none !important;
+    transform: none !important;
+  }
+}
+
+/* ── Shared tool primitives: the landing page's language, inside the apps ── */
+/* Mono uppercase label: every caption, unit and column head */
+.tl-label {
+  font-family: 'Geist Mono Variable', ui-monospace, monospace;
+  font-size: 11px;
+  line-height: 1rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #a1a1aa;
+}
+/* Display title: Archivo, heavy, expanded, tight */
+.tl-title {
+  font-family: 'Archivo Variable', 'Geist Variable', system-ui, sans-serif;
+  font-stretch: 110%;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  word-spacing: 0.12em;
+  line-height: 1.05;
+}
+/* Hazard stripe: a 4px warning band, used sparingly as an edge */
+.tl-stripe {
+  height: 4px;
+  background: repeating-linear-gradient(135deg, #e8301c 0 6px, #0a0a0b 6px 12px);
+}
+/* Primary action: hazard red, square arrow cell flush right */
+.tl-cta {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  background: #e8301c;
+  color: #fafafa;
+  font-weight: 600;
+  transition: transform 150ms cubic-bezier(0.23, 1, 0.32, 1), background-color 150ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.tl-cta > span:first-child {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.tl-cta > span:last-child {
+  display: grid;
+  width: 56px;
+  place-items: center;
+  border-left: 1px solid rgba(0, 0, 0, 0.3);
+}
+@media (hover: hover) and (pointer: fine) {
+  .tl-cta:hover:not(:disabled) {
+    background: #f03a26;
+  }
+}
+.tl-cta:active:not(:disabled) {
+  transform: scale(0.985);
+}
+.tl-cta:disabled {
+  cursor: not-allowed;
+  background: rgba(255, 255, 255, 0.08);
+  color: #71717a;
+}
+.tl-cta:focus-visible {
+  outline: 2px solid #fafafa;
+  outline-offset: 2px;
+}
+/* Hairline grid: 1px lines made by a gap on a tinted parent */
+.tl-grid {
+  display: grid;
+  gap: 1px;
+  background: rgba(255, 255, 255, 0.12);
+}
+.tl-grid > * {
+  background: #0e0e10;
+}
+/* Rider map markers: paper-white puck, red is reserved for danger */

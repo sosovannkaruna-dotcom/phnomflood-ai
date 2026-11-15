@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { FloodReport } from '../../command/types'
+import type { FloodReport } from '../../shared/types'
 import type { RouteEntry, VehicleId } from '../types'
 import { PRESETS, analyse, bearingAt, pointAt, riderFraction, safest } from '../lib/trip'
 
