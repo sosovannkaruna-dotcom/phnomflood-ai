@@ -6,12 +6,37 @@ import { RIDER_MAP_STYLE } from '../../shared/mapStyle'
 import { DEPTHS } from '../../lib/severity'
 import type { FloodReport } from '../../shared/types'
 import type { LatLng, MapMode, Passability, Preset, RouteEntry } from '../types'
-import { floodSegment, passability } from '../lib/trip'
+import { floodSegment, metresBetween, passability } from '../lib/trip'
 
 const STATUS_COLOR: Record<Passability, string> = { dry: '#10B981', caution: '#F59E0B', blocked: '#EF4444' }
 const lineOf = (path: LatLng[]): LineString => ({ type: 'LineString', coordinates: path.map(([lat, lng]) => [lng, lat]) })
 const collection = <G extends LineString | Point>(features: Feature<G>[]): FeatureCollection<G> => ({ type: 'FeatureCollection', features })
 const EMPTY = collection<LineString>([])
+
+const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2)
+const prefersReducedMotion = () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+/** The first `fraction` of a path by length, so a route can be drawn on from its start. */
+function slicePath(path: LatLng[], fraction: number): LatLng[] {
+  if (fraction >= 1) return path
+  if (fraction <= 0 || path.length < 2) return path.slice(0, 1)
+  let total = 0
+  for (let i = 1; i < path.length; i++) total += metresBetween(path[i - 1], path[i])
+  const target = total * fraction
+  const out: LatLng[] = [path[0]]
+  let walked = 0
+  for (let i = 1; i < path.length; i++) {
+    const seg = metresBetween(path[i - 1], path[i])
+    if (walked + seg >= target) {
+      const t = seg === 0 ? 0 : (target - walked) / seg
+      out.push([path[i - 1][0] + (path[i][0] - path[i - 1][0]) * t, path[i - 1][1] + (path[i][1] - path[i - 1][1]) * t])
+      return out
+    }
+    out.push(path[i])
+    walked += seg
+  }
+  return out
+}
 
 /** Room for the top HUD, the right-edge controls and the collapsed bottom sheet. */
 const PADDING = { top: 168, bottom: 284, left: 28, right: 64 }
@@ -41,6 +66,8 @@ const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap({ preset, e
   const hazards = useRef<Marker[]>([])
   const latest = useRef({ preset, entries, active, recalculating, reports, mode, position, bearing })
   latest.current = { preset, entries, active, recalculating, reports, mode, position, bearing }
+  // Trip-change choreography state: which trip is on screen, how much of the route is drawn, whether lines are visible.
+  const flow = useRef({ token: 0, progress: 1, visible: 1, frame: 0, timers: [] as number[], drawnPreset: preset.id, lastRoute: active.candidate.id })
 
   useImperativeHandle(ref, () => ({
     recenter: () => mapRef.current?.flyTo({ center: [latest.current.position[1], latest.current.position[0]], zoom: 15, duration: 900 }),
@@ -62,12 +89,17 @@ const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap({ preset, e
         ? collection([{ type: 'Feature', properties: { color: standard.blockers.length ? '#EF4444' : '#71717A' }, geometry: lineOf(standard.candidate.path) }])
         : EMPTY,
     )
+    const { progress, visible } = flow.current
     ;(map.getSource('active') as GeoJSONSource).setData(
-      collection([{ type: 'Feature', properties: { color: recalculating ? '#F59E0B' : STATUS_COLOR[passability(active)] }, geometry: lineOf(active.candidate.path) }]),
+      collection([{ type: 'Feature', properties: { color: recalculating ? '#F59E0B' : STATUS_COLOR[passability(active)] }, geometry: lineOf(slicePath(active.candidate.path, progress)) }]),
     )
     // Dashed while recalculating; clearing the property restores a solid line.
     map.setPaintProperty('active-line', 'line-dasharray', recalculating ? [1.5, 1.5] : undefined)
-    map.setPaintProperty('active-line', 'line-opacity', recalculating ? 0.6 : 1)
+    // `visible` fades every route line out and back in around a trip change.
+    map.setPaintProperty('active-line', 'line-opacity', (recalculating ? 0.6 : 1) * visible)
+    map.setPaintProperty('active-casing', 'line-opacity', visible)
+    map.setPaintProperty('alt-lines', 'line-opacity', 0.7 * visible)
+    map.setPaintProperty('standard-line', 'line-opacity', 0.9 * visible)
   }
 
   function drawFloods(map: MlMap) {
@@ -110,11 +142,37 @@ const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap({ preset, e
     })
   }
 
+  /** Draw the active route on from its start, so a new route reads as a path being laid down. */
+  function drawOn(map: MlMap, ms: number) {
+    const f = flow.current
+    cancelAnimationFrame(f.frame)
+    if (ms <= 0) {
+      f.progress = 1
+      drawRoutes(map)
+      return
+    }
+    const started = performance.now()
+    f.progress = 0
+    const step = (now: number) => {
+      const t = Math.min(1, (now - started) / ms)
+      f.progress = 1 - Math.pow(1 - t, 3)
+      drawRoutes(map)
+      if (t < 1) f.frame = requestAnimationFrame(step)
+    }
+    f.frame = requestAnimationFrame(step)
+  }
+
+  /** Endpoints and the rider puck fade with the routes, so nothing pops. */
+  function markersOpacity(value: number) {
+    ends.current.forEach((m) => (m.getElement().style.opacity = String(value)))
+    if (puck.current) puck.current.el.style.opacity = String(value)
+  }
+
   function fit(map: MlMap, animate = true) {
     const { entries, active } = latest.current
     const bounds = new maplibregl.LngLatBounds()
     for (const path of [active.candidate.path, entries[0].candidate.path]) for (const [lat, lng] of path) bounds.extend([lng, lat])
-    map.fitBounds(bounds, { padding: PADDING, duration: animate ? 900 : 0, maxZoom: 15 })
+    map.fitBounds(bounds, { padding: PADDING, duration: animate && !prefersReducedMotion() ? 1500 : 0, maxZoom: 15, easing: easeInOutCubic })
   }
 
   // ── Create the map once ──
@@ -172,15 +230,19 @@ const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap({ preset, e
       puck.current = { el, at, marker: new maplibregl.Marker({ element: el }).setLngLat([at[1], at[0]]).addTo(map) }
       ;(el.firstElementChild as SVGElement).style.transform = `rotate(${latest.current.bearing}deg)`
 
+      for (const id of ['alt-lines', 'standard-line', 'active-casing', 'active-line']) map.setPaintProperty(id, 'line-opacity-transition', { duration: 320, delay: 0 })
+
       ready.current = true
-      drawRoutes(map)
       drawFloods(map)
       drawEnds(map)
       fit(map, false)
+      drawOn(map, prefersReducedMotion() ? 0 : 1100)
     })
 
     return () => {
       ready.current = false
+      cancelAnimationFrame(flow.current.frame)
+      flow.current.timers.forEach((t) => window.clearTimeout(t))
       map.remove()
       mapRef.current = null
     }
@@ -188,7 +250,8 @@ const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap({ preset, e
   }, [])
 
   useEffect(() => {
-    if (mapRef.current && ready.current) drawRoutes(mapRef.current)
+    // While a trip change is being choreographed, that effect owns the drawing.
+    if (mapRef.current && ready.current && flow.current.drawnPreset === latest.current.preset.id) drawRoutes(mapRef.current)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entries, active, recalculating, mode])
 
@@ -197,19 +260,73 @@ const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap({ preset, e
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reports, mode])
 
-  // New trip or new active route: redraw the endpoints and reframe.
+  // New route in the same trip: lay it down. New trip: fade out, fly the camera, then draw the new route on.
   useEffect(() => {
     const map = mapRef.current
+    const f = flow.current
     if (!map || !ready.current) return
-    drawEnds(map)
-    fit(map)
+    const tripChanged = f.drawnPreset !== preset.id
+    const routeChanged = f.lastRoute !== active.candidate.id
+    f.lastRoute = active.candidate.id
+    if (!tripChanged && !routeChanged) return
+
+    const calm = prefersReducedMotion()
+    f.timers.forEach((t) => window.clearTimeout(t))
+    f.timers = []
+    cancelAnimationFrame(f.frame)
+
+    if (!tripChanged) {
+      fit(map)
+      drawOn(map, calm ? 0 : 800)
+      return
+    }
+
+    // 1. Fade the old trip out.
+    f.visible = 0
+    drawRoutes(map)
+    markersOpacity(0)
+
+    // 2. Swap in the new trip while it is invisible, and start the camera.
+    f.timers.push(
+      window.setTimeout(
+        () => {
+          f.drawnPreset = preset.id
+          f.progress = 0
+          drawRoutes(map)
+          drawEnds(map)
+          markersOpacity(0)
+          const p = puck.current
+          if (p) {
+            const at = latest.current.position
+            p.at = at
+            p.marker.setLngLat([at[1], at[0]])
+            ;(p.el.firstElementChild as SVGElement).style.transform = `rotate(${latest.current.bearing}deg)`
+          }
+          fit(map)
+
+          // 3. When the camera lands, fade the markers in and draw the route on.
+          f.timers.push(
+            window.setTimeout(
+              () => {
+                f.visible = 1
+                markersOpacity(1)
+                drawOn(map, calm ? 0 : 1000)
+              },
+              calm ? 0 : 1350,
+            ),
+          )
+        },
+        calm ? 0 : 340,
+      ),
+    )
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preset.id, active.candidate.id])
 
   // Glide the puck to its new fix instead of jumping.
   useEffect(() => {
     const p = puck.current
-    if (!p) return
+    // During a trip change the choreography places the puck, so it never travels across the city.
+    if (!p || flow.current.drawnPreset !== latest.current.preset.id) return
     ;(p.el.firstElementChild as SVGElement).style.transform = `rotate(${bearing}deg)`
     const from = p.at
     const started = performance.now()

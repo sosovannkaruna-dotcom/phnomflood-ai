@@ -149,7 +149,7 @@ export default function ReportDrawer({ place, position, onClose, onSubmit }: Pro
               <div className="tl-grid grid-cols-2 border border-white/[0.12]">
                 {scenarios.map((s) => (
                   <button key={s.id} onClick={() => verify({ url: s.image, credit: s.credit }, { scenarioId: s.id })} className="rd-press group overflow-hidden text-left">
-                    <Thumb src={s.image} alt={s.title} className="ln-halftone h-16 w-full object-cover transition-transform duration-500 ease-punch group-hover:scale-105" />
+                    <Thumb src={s.image} alt={s.title} className="h-16 w-full object-cover transition-transform duration-500 ease-punch group-hover:scale-105" />
                     <span className="block px-2 py-1.5 text-xs font-medium leading-tight text-zinc-100">{s.title}</span>
                   </button>
                 ))}

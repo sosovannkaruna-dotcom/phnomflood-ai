@@ -70,13 +70,13 @@ export default function BottomSheet({ trip, reports, position, onReport, onConfi
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Where to? Avoid flooded streets..."
                 aria-label="Destination"
-                className="h-full min-w-0 flex-1 select-text bg-transparent text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none"
+                className="h-full min-w-0 flex-1 select-text bg-transparent text-base text-zinc-100 placeholder:text-zinc-500 focus:outline-none"
               />
               <button onClick={() => setSearching(false)} aria-label="Close search" className="rd-press grid h-9 w-9 place-items-center text-zinc-400">
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <ul>
+            <ul className="cc-scroll max-h-[34dvh] overflow-y-auto">
               {matches.map((p) => (
                 <li key={p.id}>
                   <button
@@ -89,9 +89,9 @@ export default function BottomSheet({ trip, reports, position, onReport, onConfi
                   >
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-medium text-zinc-100">{p.destination.name}</span>
-                      <span className="block truncate text-xs text-zinc-400">from {p.origin.name}</span>
+                      <span className="block truncate text-xs text-zinc-400">from {p.origin.short}</span>
                     </span>
-                    {p.id === preset.id && <Check className="h-5 w-5 shrink-0 text-flare" />}
+                    {p.id === preset.id ? <Check className="h-5 w-5 shrink-0 text-flare" /> : <span className="shrink-0 font-mono text-xs text-zinc-400">{routeLengthKm(p.candidates[0])} km</span>}
                   </button>
                 </li>
               ))}

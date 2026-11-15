@@ -2,8 +2,9 @@
 // the geometry was built from; the positions (`at`, 0–1 along the route) are
 // rounded, so distances in the banner are approximate.
 import type { Maneuver } from '../types'
+import generated from '../../data/routeMeta.generated.json'
 
-export const MANEUVERS: Record<string, Maneuver[]> = {
+const HAND_MADE: Record<string, Maneuver[]> = {
   'rupp-bkk-a': [
     { at: 0.28, turn: 'right', street: 'Nehru Blvd (St. 215)', toward: 'Sihanouk Blvd' },
     { at: 0.52, turn: 'left', street: 'Sihanouk Blvd', toward: 'Monivong Blvd' },
@@ -50,3 +51,6 @@ export const MANEUVERS: Record<string, Maneuver[]> = {
     { at: 1, turn: 'arrive', street: 'RUPP' },
   ],
 }
+
+// Turn lists for the generated trips come from the OSRM steps, named in English via OpenStreetMap.
+export const MANEUVERS: Record<string, Maneuver[]> = { ...HAND_MADE, ...(generated.maneuvers as Record<string, Maneuver[]>) }

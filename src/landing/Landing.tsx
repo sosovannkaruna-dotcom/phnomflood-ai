@@ -18,8 +18,8 @@ const STATEMENT = 'Water rises faster than information moves. PhnomFlood closes 
 
 const SLICES = [
   { src: '/scenarios/ankle-deep-puddle.jpg', alt: 'Two people riding a bicycle through street water that reaches the wheel hubs', cm: DEPTHS.ankle.cm, name: DEPTHS.ankle.short, note: 'Motorbikes slow down and take care.' },
-  { src: '/scenarios/knee-deep-flood.jpg', alt: 'A rider pushing a stalled motorbike through floodwater up to the seat', cm: DEPTHS.knee.cm, name: DEPTHS.knee.short, note: 'Motorbikes and tuk-tuks reroute.' },
-  { src: '/scenarios/waist-deep-flood.jpg', alt: 'A group wading through thigh-deep brown floodwater in front of a row of shophouses', cm: DEPTHS.waist.cm, name: DEPTHS.waist.short, note: 'Nothing passes. Cars reroute too.' },
+  { src: '/scenarios/knee-deep-flood.jpg', alt: 'A group wading through knee-deep brown floodwater in front of a row of shophouses', cm: DEPTHS.knee.cm, name: DEPTHS.knee.short, note: 'Motorbikes and tuk-tuks reroute.' },
+  { src: '/scenarios/waist-deep-flood.jpg', alt: 'A rider pushing a stalled motorbike through floodwater up to the seat', cm: DEPTHS.waist.cm, name: DEPTHS.waist.short, note: 'Nothing passes. Cars reroute too.' },
 ]
 
 const STAGES = [
@@ -171,7 +171,7 @@ export default function Landing({ onOpenRider }: Props) {
           </div>
           <div className="lg:col-span-5">
             <div className="hero-photo ln-halftone-wrap aspect-[4/5] w-full border border-white/15">
-              <img src="/scenarios/knee-deep-flood.jpg" alt="A rider pushing a stalled motorbike through floodwater up to the seat" className="ln-halftone h-full w-full object-cover" {...{ fetchpriority: 'high' }} />
+              <img src="/scenarios/waist-deep-flood.jpg" alt="A rider pushing a stalled motorbike through floodwater up to the seat" className="ln-halftone h-full w-full object-cover" {...{ fetchpriority: 'high' }} />
             </div>
           </div>
         </section>

@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { ArrowUp, ArrowBendUpLeft as CornerUpLeft, ArrowBendUpRight as CornerUpRight, Flag, Stack as Layers, CircleNotch as Loader2 } from '@phosphor-icons/react'
+import { ArrowUp, ArrowBendUpLeft as CornerUpLeft, ArrowBendUpRight as CornerUpRight, Flag, CircleNotch as Loader2 } from '@phosphor-icons/react'
 import { DEPTHS } from '../../lib/severity'
-import type { MapMode, Place } from '../types'
+import type { Place } from '../types'
 import type { Trip } from '../hooks/useTrip'
 import { VEHICLE_NOUN } from '../hooks/useTrip'
 import { nextManeuver, passability } from '../lib/trip'
@@ -12,13 +12,11 @@ const metres = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${m}
 interface Props {
   trip: Trip
   place: Place
-  mode: MapMode
-  onToggleMode: () => void
   onHome: () => void
 }
 
 /** Status strip plus the turn-by-turn and hazard banner. */
-export default function TopHud({ trip, place, mode, onToggleMode, onHome }: Props) {
+export default function TopHud({ trip, place, onHome }: Props) {
   const { active, recalculating, notice, fraction, vehicle } = trip
   const { step, metres: distance } = nextManeuver(active.candidate, fraction)
   const Turn = TURN_ICON[step.turn]
@@ -32,8 +30,6 @@ export default function TopHud({ trip, place, mode, onToggleMode, onHome }: Prop
         : { text: 'Deep water ahead', color: '#EF4444' }
   const barColor = recalculating ? '#F59E0B' : badge.color
 
-  const tool = 'cc-btn grid h-11 w-11 shrink-0 place-items-center text-zinc-300'
-
   return (
     <div className="pt-safe pointer-events-none absolute inset-x-3 top-3 z-10 space-y-2">
       {/* Status strip: one hairline-divided slab */}
@@ -45,15 +41,12 @@ export default function TopHud({ trip, place, mode, onToggleMode, onHome }: Prop
           </svg>
           <span className="tl-title text-sm text-zinc-50">Rider</span>
         </button>
-        <span className="flex min-w-0 flex-1 items-center px-3" title={`Khan ${place.khan}`}>
-          <span className="tl-label truncate text-zinc-200">{place.sangkat}</span>
+        <span className="flex min-w-0 flex-1 items-center px-3" title={`${place.area}, Sangkat ${place.sangkat}, Khan ${place.khan}`}>
+          <span className="tl-label truncate text-zinc-200">{place.area}</span>
         </span>
         <span className="hidden items-center px-3 min-[400px]:flex">
           <span className="tl-label text-emerald-400">GPS lock</span>
         </span>
-        <button onClick={onToggleMode} aria-label={`Map layer: ${mode === 'depth' ? 'flood depth' : 'passability'}. Tap to switch.`} title={mode === 'depth' ? 'Showing flood depth' : 'Showing passability'} className={`${tool} ${mode === 'depth' ? 'text-water' : 'text-emerald-400'}`}>
-          <Layers className="h-5 w-5" />
-        </button>
       </div>
 
       {/* Turn-by-turn + hazard banner: status colour runs down the left edge */}

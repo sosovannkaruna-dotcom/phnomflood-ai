@@ -36,7 +36,8 @@ function beep() {
 export default function RiderApp({ onHome }: { onHome: () => void }) {
   const { reports, addReport, addRerouted, confirmReport, clearReport } = useFlood()
   const trip = useTrip(reports, () => addRerouted(24 + Math.floor(Math.random() * 18)))
-  const [mode, setMode] = useState<MapMode>('depth')
+  // Depth tags and red / amber hazard markers are always on: they are the warning.
+  const mode: MapMode = 'depth'
   const [muted, setMuted] = useState(false)
   const [reporting, setReporting] = useState(false)
   const map = useRef<RiderMapHandle>(null)
@@ -87,7 +88,7 @@ export default function RiderApp({ onHome }: { onHome: () => void }) {
         bearing={trip.bearing}
       />
 
-      <TopHud trip={trip} place={place} mode={mode} onToggleMode={() => setMode((m) => (m === 'depth' ? 'passability' : 'depth'))} onHome={onHome} />
+      <TopHud trip={trip} place={place} onHome={onHome} />
 
       {/* Right-edge map controls, in thumb reach just above the sheet */}
       <div className="rd-controls cc-panel absolute right-3 z-10 flex flex-col divide-y divide-white/[0.12]">

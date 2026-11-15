@@ -10,6 +10,7 @@
 // candidates[0] is always the "standard" route a generic map app would suggest.
 
 import geometry from './routeGeometry.json'
+import generated from './routeMeta.generated.json'
 
 const candidate = (id, via, typicalMinutes) => ({
   id,
@@ -32,7 +33,7 @@ function preset(id, origin, destination, candidates) {
   }
 }
 
-export const ROUTE_PRESETS = [
+const HAND_MADE = [
   preset(
     'rupp-bkk',
     { name: 'Royal University of Phnom Penh (RUPP)', short: 'RUPP' },
@@ -63,5 +64,19 @@ export const ROUTE_PRESETS = [
     ],
   ),
 ]
+
+// More destinations, generated once offline (the generator is not in this repo): real OSRM geometry,
+// English street names and Sangkat/Khan from OpenStreetMap (Nominatim), turn lists from the OSRM steps.
+// ETAs are illustrative, like the hand-made trips above.
+const GENERATED = generated.presets.map((p) =>
+  preset(
+    p.id,
+    p.origin,
+    p.destination,
+    p.candidates.map((c) => candidate(c.id, c.via, c.typicalMinutes)),
+  ),
+)
+
+export const ROUTE_PRESETS = [...HAND_MADE, ...GENERATED]
 
 export const PHNOM_PENH_CENTER = [11.5564, 104.9282]

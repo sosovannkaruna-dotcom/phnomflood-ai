@@ -1,0 +1,902 @@
+{
+ "presets": [
+  {
+   "id": "independence-aeon",
+   "origin": {
+    "name": "Independence Monument",
+    "short": "Independence Monument"
+   },
+   "destination": {
+    "name": "AEON Mall 1",
+    "short": "AEON Mall 1"
+   },
+   "candidates": [
+    {
+     "id": "independence-aeon-a",
+     "via": "Preah Norodom Blvd → Oknha Chrun Youhak Street → Samdech Sothearos Blvd",
+     "typicalMinutes": 5
+    },
+    {
+     "id": "independence-aeon-b",
+     "via": "Samdech Preah Sihanouk Blvd → National Assembly Street → Xiao Ma Street",
+     "typicalMinutes": 7
+    }
+   ]
+  },
+  {
+   "id": "central-airport",
+   "origin": {
+    "name": "Central Market (Phsar Thmei)",
+    "short": "Central Market"
+   },
+   "destination": {
+    "name": "Phnom Penh International Airport",
+    "short": "Airport"
+   },
+   "candidates": [
+    {
+     "id": "central-airport-a",
+     "via": "Kampuchea Krom Blvd → Russian Blvd",
+     "typicalMinutes": 22
+    },
+    {
+     "id": "central-airport-b",
+     "via": "Kampuchea Krom Blvd → Mai Da Road → Russian Blvd",
+     "typicalMinutes": 27
+    }
+   ]
+  },
+  {
+   "id": "olympic-palace",
+   "origin": {
+    "name": "Olympic Stadium",
+    "short": "Olympic Stadium"
+   },
+   "destination": {
+    "name": "Royal Palace",
+    "short": "Royal Palace"
+   },
+   "candidates": [
+    {
+     "id": "olympic-palace-a",
+     "via": "Street 196 → Oknha Tep Phan → Preah Sokun Mean Bon",
+     "typicalMinutes": 7
+    },
+    {
+     "id": "olympic-palace-b",
+     "via": "Charles De Gaulle Blvd → Dekcho Damdin → Pasteur",
+     "typicalMinutes": 8
+    }
+   ]
+  },
+  {
+   "id": "tuolsleng-watphnom",
+   "origin": {
+    "name": "Tuol Sleng Genocide Museum",
+    "short": "Tuol Sleng"
+   },
+   "destination": {
+    "name": "Wat Phnom",
+    "short": "Wat Phnom"
+   },
+   "candidates": [
+    {
+     "id": "tuolsleng-watphnom-a",
+     "via": "Oknha Nou Kan → Preah Monivong Blvd → Kramoun Sor Street",
+     "typicalMinutes": 9
+    },
+    {
+     "id": "tuolsleng-watphnom-b",
+     "via": "Oknha Nou Kan → Preah Trasak Paem → Preah Norodom Blvd",
+     "typicalMinutes": 9
+    }
+   ]
+  },
+  {
+   "id": "rupp-central",
+   "origin": {
+    "name": "Royal University of Phnom Penh (RUPP)",
+    "short": "RUPP"
+   },
+   "destination": {
+    "name": "Central Market (Phsar Thmei)",
+    "short": "Central Market"
+   },
+   "candidates": [
+    {
+     "id": "rupp-central-a",
+     "via": "Russian Blvd → Street 261 → Kampuchea Krom Blvd",
+     "typicalMinutes": 8
+    },
+    {
+     "id": "rupp-central-b",
+     "via": "Russian Blvd → Street 221 → Preah Monivong Blvd",
+     "typicalMinutes": 12
+    }
+   ]
+  },
+  {
+   "id": "tk-aeonsensok",
+   "origin": {
+    "name": "TK Avenue, Tuol Kork",
+    "short": "TK Avenue"
+   },
+   "destination": {
+    "name": "AEON Mall 2 (Sen Sok City)",
+    "short": "AEON Mall 2"
+   },
+   "candidates": [
+    {
+     "id": "tk-aeonsensok-a",
+     "via": "Bangabandhu Sheikh Mujib St 337 → Street 1958 → Street 1003",
+     "typicalMinutes": 10
+    },
+    {
+     "id": "tk-aeonsensok-b",
+     "via": "Street 355 → Oknha Mong Reththy → Street 1003",
+     "typicalMinutes": 10
+    }
+   ]
+  },
+  {
+   "id": "russianmarket-kohpich",
+   "origin": {
+    "name": "Russian Market (Phsar Toul Tompoung)",
+    "short": "Russian Market"
+   },
+   "destination": {
+    "name": "Koh Pich (Diamond Island)",
+    "short": "Koh Pich"
+   },
+   "candidates": [
+    {
+     "id": "russianmarket-kohpich-a",
+     "via": "Street 155 → Mao Tse Toung Blvd → Samdech Sothearos Blvd",
+     "typicalMinutes": 11
+    },
+    {
+     "id": "russianmarket-kohpich-b",
+     "via": "Mao Tse Toung Blvd → Preah Norodom Blvd → Samdech Preah Sihanouk Blvd",
+     "typicalMinutes": 14
+    }
+   ]
+  },
+  {
+   "id": "bkk-chipmong",
+   "origin": {
+    "name": "BKK1 Market (Phsar Boeung Keng Kang)",
+    "short": "BKK1 Market"
+   },
+   "destination": {
+    "name": "Chip Mong 271 Mega Mall",
+    "short": "Chip Mong 271"
+   },
+   "candidates": [
+    {
+     "id": "bkk-chipmong-a",
+     "via": "Street 57 → Preah Norodom Blvd → Yothapol Khemarak Phoumin Blvd",
+     "typicalMinutes": 8
+    },
+    {
+     "id": "bkk-chipmong-b",
+     "via": "Preah Norodom Blvd → National Highway 2 → Yothapol Khemarak Phoumin Blvd",
+     "typicalMinutes": 13
+    }
+   ]
+  }
+ ],
+ "maneuvers": {
+  "independence-aeon-a": [
+   {
+    "at": 0.103,
+    "turn": "straight",
+    "street": "Preah Norodom Blvd",
+    "toward": "Oknha Chrun Youhak Street"
+   },
+   {
+    "at": 0.227,
+    "turn": "left",
+    "street": "Oknha Chrun Youhak Street",
+    "toward": "Samdech Sothearos Blvd"
+   },
+   {
+    "at": 0.436,
+    "turn": "right",
+    "street": "Samdech Sothearos Blvd",
+    "toward": "AEON Mall 1"
+   },
+   {
+    "at": 1,
+    "turn": "arrive",
+    "street": "AEON Mall 1"
+   }
+  ],
+  "independence-aeon-b": [
+   {
+    "at": 0.087,
+    "turn": "right",
+    "street": "Samdech Preah Sihanouk Blvd",
+    "toward": "National Assembly Street"
+   },
+   {
+    "at": 0.415,
+    "turn": "right",
+    "street": "National Assembly Street",
+    "toward": "Street 78"
+   },
+   {
+    "at": 0.557,
+    "turn": "left",
+    "street": "Street 78",
+    "toward": "Xiao Ma Street"
+   },
+   {
+    "at": 0.677,
+    "turn": "right",
+    "street": "Xiao Ma Street",
+    "toward": "Samdech Sothearos Blvd"
+   },
+   {
+    "at": 0.981,
+    "turn": "right",
+    "street": "Samdech Sothearos Blvd",
+    "toward": "AEON Mall 1"
+   },
+   {
+    "at": 1,
+    "turn": "arrive",
+    "street": "AEON Mall 1"
+   }
+  ],
+  "central-airport-a": [
+   {
+    "at": 0.01,
+    "turn": "left",
+    "street": "Khemarak Phoumin Avenue",
+    "toward": "Prey Nokor"
+   },
+   {
+    "at": 0.027,
+    "turn": "left",
+    "street": "Prey Nokor",
+    "toward": "Samdech Sangkhak Neayok Srey"
+   },
+   {
+    "at": 0.047,
+    "turn": "left",
+    "street": "Samdech Sangkhak Neayok Srey",
+    "toward": "Kampuchea Krom Blvd"
+   },
+   {
+    "at": 0.056,
+    "turn": "right",
+    "street": "Kampuchea Krom Blvd",
+    "toward": "Russian Blvd"
+   },
+   {
+    "at": 0.428,
+    "turn": "left",
+    "street": "Russian Blvd",
+    "toward": "Russian Blvd"
+   },
+   {
+    "at": 0.6,
+    "turn": "right",
+    "street": "Russian Blvd",
+    "toward": "Airport"
+   },
+   {
+    "at": 1,
+    "turn": "arrive",
+    "street": "Airport"
+   }
+  ],
+  "olympic-palace-a": [
+   {
+    "at": 0.076,
+    "turn": "right",
+    "street": "Charles De Gaulle Blvd",
+    "toward": "Street 196"
+   },
+   {
+    "at": 0.1,
+    "turn": "right",
+    "street": "Street 196",
+    "toward": "Oknha Tep Phan"
+   },
+   {
+    "at": 0.245,
+    "turn": "right",
+    "street": "Oknha Tep Phan",
+    "toward": "Preah Monivong Blvd"
+   },
+   {
+    "at": 0.532,
+    "turn": "left",
+    "street": "Preah Monivong Blvd",
+    "toward": "Preah Sokun Mean Bon"
+   },
+   {
+    "at": 0.579,
+    "turn": "right",
+    "street": "Preah Sokun Mean Bon",
+    "toward": "Preah Ang Makhak Vann"
+   },
+   {
+    "at": 0.943,
+    "turn": "right",
+    "street": "Preah Ang Makhak Vann",
+    "toward": "Royal Palace"
+   },
+   {
+    "at": 1,
+    "turn": "arrive",
+    "street": "Royal Palace"
+   }
+  ],
+  "olympic-palace-b": [
+   {
+    "at": 0.065,
+    "turn": "right",
+    "street": "Charles De Gaulle Blvd",
+    "toward": "Samdech Sangkhak Neayok Srey"
+   },
+   {
+    "at": 0.55,
+    "turn": "right",
+    "street": "Samdech Sangkhak Neayok Srey",
+    "toward": "Dekcho Damdin"
+   },
+   {
+    "at": 0.595,
+    "turn": "left",
+    "street": "Dekcho Damdin",
+    "toward": "Pasteur"
+   },
+   {
+    "at": 0.688,
+    "turn": "right",
+    "street": "Pasteur",
+    "toward": "Preah Sokun Mean Bon"
+   },
+   {
+    "at": 0.788,
+    "turn": "left",
+    "street": "Preah Sokun Mean Bon",
+    "toward": "Preah Ang Makhak Vann"
+   },
+   {
+    "at": 0.951,
+    "turn": "right",
+    "street": "Preah Ang Makhak Vann",
+    "toward": "Royal Palace"
+   },
+   {
+    "at": 1,
+    "turn": "arrive",
+    "street": "Royal Palace"
+   }
+  ],
+  "tuolsleng-watphnom-a": [
+   {
+    "at": 0.041,
+    "turn": "right",
+    "street": "Oknha Nou Kan",
+    "toward": "Sok Hok"
+   },
+   {
+    "at": 0.411,
+    "turn": "left",
+    "street": "Sok Hok",
+    "toward": "Rue Ung Po Kun"
+   },
+   {
+    "at": 0.425,
+    "turn": "right",
+    "street": "Rue Ung Po Kun",
+    "toward": "Preah Monivong Blvd"
+   },
+   {
+    "at": 0.559,
+    "turn": "right",
+    "street": "Preah Monivong Blvd",
+    "toward": "Kramoun Sor Street"
+   },
+   {
+    "at": 0.711,
+    "turn": "right",
+    "street": "Kramoun Sor Street",
+    "toward": "Preah Norodom Blvd"
+   },
+   {
+    "at": 0.867,
+    "turn": "left",
+    "street": "Preah Norodom Blvd",
+    "toward": "Wat Phnom Roundabout"
+   },
+   {
+    "at": 0.95,
+    "turn": "right",
+    "street": "Wat Phnom Roundabout",
+    "toward": "Wat Phnom"
+   },
+   {
+    "at": 1,
+    "turn": "arrive",
+    "street": "Wat Phnom"
+   }
+  ],
+  "tuolsleng-watphnom-b": [
+   {
+    "at": 0.041,
+    "turn": "right",
+    "street": "Oknha Nou Kan",
+    "toward": "Oknha Tep Phan"
+   },
+   {
+    "at": 0.417,
+    "turn": "right",
+    "street": "Oknha Tep Phan",
+    "toward": "Preah Monivong Blvd"
+   },
+   {
+    "at": 0.434,
+    "turn": "left",
+    "street": "Preah Monivong Blvd",
+    "toward": "Preah Sokun Mean Bon"
+   },
+   {
+    "at": 0.469,
+    "turn": "right",
+    "street": "Preah Sokun Mean Bon",
+    "toward": "Preah Trasak Paem"
+   },
+   {
+    "at": 0.539,
+    "turn": "left",
+    "street": "Preah Trasak Paem",
+    "toward": "Samdech Sangkhak Neayok Souk"
+   },
+   {
+    "at": 0.688,
+    "turn": "right",
+    "street": "Samdech Sangkhak Neayok Souk",
+    "toward": "Khemarak Phoumin Avenue"
+   },
+   {
+    "at": 0.716,
+    "turn": "left",
+    "street": "Khemarak Phoumin Avenue",
+    "toward": "Chey Chetha"
+   },
+   {
+    "at": 0.757,
+    "turn": "right",
+    "street": "Chey Chetha",
+    "toward": "Kramoun Sor Street"
+   },
+   {
+    "at": 0.806,
+    "turn": "right",
+    "street": "Kramoun Sor Street",
+    "toward": "Preah Norodom Blvd"
+   },
+   {
+    "at": 0.865,
+    "turn": "left",
+    "street": "Preah Norodom Blvd",
+    "toward": "Wat Phnom Roundabout"
+   },
+   {
+    "at": 0.95,
+    "turn": "right",
+    "street": "Wat Phnom Roundabout",
+    "toward": "Wat Phnom"
+   },
+   {
+    "at": 1,
+    "turn": "arrive",
+    "street": "Wat Phnom"
+   }
+  ],
+  "rupp-central-a": [
+   {
+    "at": 0.069,
+    "turn": "right",
+    "street": "Street 261",
+    "toward": "Kampuchea Krom Blvd"
+   },
+   {
+    "at": 0.114,
+    "turn": "left",
+    "street": "Kampuchea Krom Blvd",
+    "toward": "Samdech Sangkhak Neayok Srey"
+   },
+   {
+    "at": 0.951,
+    "turn": "right",
+    "street": "Samdech Sangkhak Neayok Srey",
+    "toward": "Samdech Sangkhak Neayok Souk"
+   },
+   {
+    "at": 0.97,
+    "turn": "left",
+    "street": "Samdech Sangkhak Neayok Souk",
+    "toward": "Central Market"
+   },
+   {
+    "at": 1,
+    "turn": "arrive",
+    "street": "Central Market"
+   }
+  ],
+  "tk-aeonsensok-a": [
+   {
+    "at": 0.003,
+    "turn": "left",
+    "street": "Street 516",
+    "toward": "Bangabandhu Sheikh Mujib St 337"
+   },
+   {
+    "at": 0.076,
+    "turn": "left",
+    "street": "Bangabandhu Sheikh Mujib St 337",
+    "toward": "Street 1003"
+   },
+   {
+    "at": 0.503,
+    "turn": "right",
+    "street": "Street 1003",
+    "toward": "AEON Mall 2"
+   },
+   {
+    "at": 1,
+    "turn": "arrive",
+    "street": "AEON Mall 2"
+   }
+  ],
+  "tk-aeonsensok-b": [
+   {
+    "at": 0.003,
+    "turn": "left",
+    "street": "Street 516",
+    "toward": "Samdach Penn Nouth Street"
+   },
+   {
+    "at": 0.044,
+    "turn": "left",
+    "street": "Samdach Penn Nouth Street",
+    "toward": "Street 355"
+   },
+   {
+    "at": 0.101,
+    "turn": "left",
+    "street": "Street 355",
+    "toward": "Oknha Mong Reththy"
+   },
+   {
+    "at": 0.28,
+    "turn": "left",
+    "street": "Oknha Mong Reththy",
+    "toward": "Street 1003"
+   },
+   {
+    "at": 0.691,
+    "turn": "right",
+    "street": "Street 1003",
+    "toward": "AEON Mall 2"
+   },
+   {
+    "at": 1,
+    "turn": "arrive",
+    "street": "AEON Mall 2"
+   }
+  ],
+  "russianmarket-kohpich-a": [
+   {
+    "at": 0.013,
+    "turn": "left",
+    "street": "Street 155",
+    "toward": "Mao Tse Toung Blvd"
+   },
+   {
+    "at": 0.136,
+    "turn": "right",
+    "street": "Mao Tse Toung Blvd",
+    "toward": "Xiao Ma Street"
+   },
+   {
+    "at": 0.816,
+    "turn": "left",
+    "street": "Xiao Ma Street",
+    "toward": "Park Avenue"
+   },
+   {
+    "at": 0.836,
+    "turn": "right",
+    "street": "Park Avenue",
+    "toward": "Sopheak Mongkol Road"
+   },
+   {
+    "at": 0.879,
+    "turn": "right",
+    "street": "Sopheak Mongkol Road",
+    "toward": "Elite Road"
+   },
+   {
+    "at": 0.95,
+    "turn": "right",
+    "street": "Elite Road",
+    "toward": "Koh Pich"
+   },
+   {
+    "at": 1,
+    "turn": "arrive",
+    "street": "Koh Pich"
+   }
+  ],
+  "bkk-chipmong-a": [
+   {
+    "at": 0.014,
+    "turn": "right",
+    "street": "Street 57",
+    "toward": "Mao Tse Toung Blvd"
+   },
+   {
+    "at": 0.083,
+    "turn": "left",
+    "street": "Mao Tse Toung Blvd",
+    "toward": "Preah Norodom Blvd"
+   },
+   {
+    "at": 0.132,
+    "turn": "right",
+    "street": "Preah Norodom Blvd",
+    "toward": "Preah Monivong Blvd"
+   },
+   {
+    "at": 0.533,
+    "turn": "straight",
+    "street": "Preah Monivong Blvd",
+    "toward": "Chip Mong 271"
+   },
+   {
+    "at": 1,
+    "turn": "arrive",
+    "street": "Chip Mong 271"
+   }
+  ],
+  "central-airport-b": [
+   {
+    "at": 0.008,
+    "turn": "left",
+    "street": "Khemarak Phoumin Avenue",
+    "toward": "Prey Nokor"
+   },
+   {
+    "at": 0.022,
+    "turn": "left",
+    "street": "Prey Nokor",
+    "toward": "Samdech Sangkhak Neayok Srey"
+   },
+   {
+    "at": 0.039,
+    "turn": "left",
+    "street": "Samdech Sangkhak Neayok Srey",
+    "toward": "Kampuchea Krom Blvd"
+   },
+   {
+    "at": 0.046,
+    "turn": "right",
+    "street": "Kampuchea Krom Blvd",
+    "toward": "Street 265"
+   },
+   {
+    "at": 0.326,
+    "turn": "left",
+    "street": "Street 265",
+    "toward": "Oknha Tep Phan"
+   },
+   {
+    "at": 0.372,
+    "turn": "right",
+    "street": "Oknha Tep Phan",
+    "toward": "Yothapol Khemarak Phoumin Blvd"
+   },
+   {
+    "at": 0.384,
+    "turn": "left",
+    "street": "Yothapol Khemarak Phoumin Blvd",
+    "toward": "Street 2002"
+   },
+   {
+    "at": 0.444,
+    "turn": "right",
+    "street": "Street 2002",
+    "toward": "St Betong"
+   },
+   {
+    "at": 0.512,
+    "turn": "left",
+    "street": "St Betong",
+    "toward": "Street 13B"
+   },
+   {
+    "at": 0.541,
+    "turn": "right",
+    "street": "Street 13B",
+    "toward": "Mai Da Road"
+   },
+   {
+    "at": 0.555,
+    "turn": "right",
+    "street": "Mai Da Road",
+    "toward": "Russian Blvd"
+   },
+   {
+    "at": 0.885,
+    "turn": "left",
+    "street": "Russian Blvd",
+    "toward": "Airport"
+   },
+   {
+    "at": 1,
+    "turn": "arrive",
+    "street": "Airport"
+   }
+  ],
+  "rupp-central-b": [
+   {
+    "at": 0.048,
+    "turn": "right",
+    "street": "Street 261",
+    "toward": "Street 221"
+   },
+   {
+    "at": 0.079,
+    "turn": "left",
+    "street": "Street 221",
+    "toward": "Preah Monivong Blvd"
+   },
+   {
+    "at": 0.619,
+    "turn": "left",
+    "street": "Preah Monivong Blvd",
+    "toward": "Oknha Ing Bun Hoaw"
+   },
+   {
+    "at": 0.861,
+    "turn": "left",
+    "street": "Oknha Ing Bun Hoaw",
+    "toward": "Preah Trapeang"
+   },
+   {
+    "at": 0.896,
+    "turn": "right",
+    "street": "Preah Trapeang",
+    "toward": "Samdech Sangkhak Neayok Srey"
+   },
+   {
+    "at": 0.95,
+    "turn": "right",
+    "street": "Samdech Sangkhak Neayok Srey",
+    "toward": "Samdech Sangkhak Neayok Souk"
+   },
+   {
+    "at": 0.979,
+    "turn": "left",
+    "street": "Samdech Sangkhak Neayok Souk",
+    "toward": "Central Market"
+   },
+   {
+    "at": 1,
+    "turn": "arrive",
+    "street": "Central Market"
+   }
+  ],
+  "russianmarket-kohpich-b": [
+   {
+    "at": 0.01,
+    "turn": "left",
+    "street": "Street 155",
+    "toward": "Mao Tse Toung Blvd"
+   },
+   {
+    "at": 0.108,
+    "turn": "right",
+    "street": "Mao Tse Toung Blvd",
+    "toward": "Preah Trasak Paem"
+   },
+   {
+    "at": 0.295,
+    "turn": "left",
+    "street": "Preah Trasak Paem",
+    "toward": "Street 360"
+   },
+   {
+    "at": 0.38,
+    "turn": "right",
+    "street": "Street 360",
+    "toward": "Preah Norodom Blvd"
+   },
+   {
+    "at": 0.463,
+    "turn": "left",
+    "street": "Preah Norodom Blvd",
+    "toward": "Samdech Preah Sihanouk Blvd"
+   },
+   {
+    "at": 0.602,
+    "turn": "right",
+    "street": "Samdech Preah Sihanouk Blvd",
+    "toward": "National Assembly Street"
+   },
+   {
+    "at": 0.73,
+    "turn": "right",
+    "street": "National Assembly Street",
+    "toward": "Street 78"
+   },
+   {
+    "at": 0.806,
+    "turn": "left",
+    "street": "Street 78",
+    "toward": "Sopheak Mongkol Road"
+   },
+   {
+    "at": 0.904,
+    "turn": "right",
+    "street": "Sopheak Mongkol Road",
+    "toward": "Elite Road"
+   },
+   {
+    "at": 0.961,
+    "turn": "right",
+    "street": "Elite Road",
+    "toward": "Koh Pich"
+   },
+   {
+    "at": 1,
+    "turn": "arrive",
+    "street": "Koh Pich"
+   }
+  ],
+  "bkk-chipmong-b": [
+   {
+    "at": 0.009,
+    "turn": "right",
+    "street": "Street 57",
+    "toward": "Mao Tse Toung Blvd"
+   },
+   {
+    "at": 0.053,
+    "turn": "left",
+    "street": "Mao Tse Toung Blvd",
+    "toward": "Preah Norodom Blvd"
+   },
+   {
+    "at": 0.085,
+    "turn": "right",
+    "street": "Preah Norodom Blvd",
+    "toward": "National Highway 2"
+   },
+   {
+    "at": 0.342,
+    "turn": "straight",
+    "street": "National Highway 2",
+    "toward": "Preah Monivong Blvd"
+   },
+   {
+    "at": 0.7,
+    "turn": "left",
+    "street": "Preah Monivong Blvd",
+    "toward": "Chip Mong 271"
+   },
+   {
+    "at": 1,
+    "turn": "arrive",
+    "street": "Chip Mong 271"
+   }
+  ]
+ }
+}
