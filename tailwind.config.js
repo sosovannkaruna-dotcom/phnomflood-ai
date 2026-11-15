@@ -16,9 +16,9 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['"Geist Variable"', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
-        display: ['"Archivo Variable"', '"Geist Variable"', 'system-ui', 'sans-serif'],
-        mono: ['"Geist Mono Variable"', 'ui-monospace', 'SF Mono', 'Menlo', 'monospace'],
+        sans: ['"Geist Variable"', '"Noto Sans Khmer Variable"', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
+        display: ['"Archivo Variable"', '"Geist Variable"', '"Noto Sans Khmer Variable"', 'system-ui', 'sans-serif'],
+        mono: ['"Geist Mono Variable"', '"Noto Sans Khmer Variable"', 'ui-monospace', 'SF Mono', 'Menlo', 'monospace'],
       },
       // Type scale: 11 / 12 / 13 / 14 / 16 / 18 / 20. Nothing smaller than 11px in the tools.
       fontSize: {

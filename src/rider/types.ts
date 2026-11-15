@@ -64,14 +64,17 @@ export interface FloodSegment {
 
 export interface VisionResult {
   status: 'verified' | 'rejected' | 'unavailable'
-  message?: string
+  /** unavailable: why */
+  code?: 'not_configured' | 'demo_upload' | 'failed'
+  /** rejected: what the AI saw instead */
   reason?: string
   depth?: Exclude<DepthId, 'clear'>
   depthCm?: number
+  /** the visual cue the depth came from, e.g. "water reaching the seat of a stalled motorbike" */
+  cue?: string
   reference?: { object: string; submersionPct: number; debris: boolean }
   drainage?: { status: string; blocked: boolean; confidence: number }
-  risk?: { level: string; label: string }
-  correction?: { message: string; direction: 'up' | 'down' } | null
+  correction?: { from: Exclude<DepthId, 'clear'>; to: Exclude<DepthId, 'clear'>; direction: 'up' | 'down' } | null
   agreement?: string
-  source?: string
+  source?: 'demo' | 'live'
 }

@@ -39,7 +39,7 @@ function slicePath(path: LatLng[], fraction: number): LatLng[] {
 }
 
 /** Room for the top HUD, the right-edge controls and the collapsed bottom sheet. */
-const PADDING = { top: 168, bottom: 284, left: 28, right: 64 }
+const PADDING = { top: 176, bottom: 292, left: 48, right: 92 }
 
 export interface RiderMapHandle {
   recenter: () => void
@@ -55,17 +55,22 @@ interface Props {
   mode: MapMode
   position: LatLng
   bearing: number
+  /** Riding: the camera follows the rider and the puck moves linearly between ticks. */
+  following: boolean
+  glideMs: number
 }
 
-const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap({ preset, entries, active, recalculating, reports, mode, position, bearing }, ref) {
+const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap({ preset, entries, active, recalculating, reports, mode, position, bearing, following, glideMs }, ref) {
   const container = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MlMap | null>(null)
   const ready = useRef(false)
   const puck = useRef<{ marker: Marker; el: HTMLElement; at: LatLng } | null>(null)
   const ends = useRef<Marker[]>([])
   const hazards = useRef<Marker[]>([])
-  const latest = useRef({ preset, entries, active, recalculating, reports, mode, position, bearing })
-  latest.current = { preset, entries, active, recalculating, reports, mode, position, bearing }
+  const latest = useRef({ preset, entries, active, recalculating, reports, mode, position, bearing, following })
+  latest.current = { preset, entries, active, recalculating, reports, mode, position, bearing, following }
+  // While the camera flies in to start following, per-tick camera moves wait for it.
+  const followHold = useRef(0)
   // Trip-change choreography state: which trip is on screen, how much of the route is drawn, whether lines are visible.
   const flow = useRef({ token: 0, progress: 1, visible: 1, frame: 0, timers: [] as number[], drawnPreset: preset.id, lastRoute: active.candidate.id })
 
@@ -130,16 +135,36 @@ const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap({ preset, e
     ;(map.getSource('zones') as GeoJSONSource).setData(collection(zones))
   }
 
+  /** Start (A) and destination (B) as labelled pins: a letter badge plus the place name. */
   function drawEnds(map: MlMap) {
     const { preset } = latest.current
+    const esc = (t: string) => t.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
     ends.current.forEach((m) => m.remove())
-    ends.current = [preset.origin, preset.destination].map((end, i) => {
+    ends.current = [
+      { point: preset.origin, kind: 'start', letter: 'A', caption: 'Start' },
+      { point: preset.destination, kind: 'destination', letter: 'B', caption: 'Destination' },
+    ].map(({ point, kind, letter, caption }) => {
       const el = document.createElement('div')
-      el.className = i === 0 ? 'rd-end' : 'rd-end is-destination'
+      el.className = `rd-pin is-${kind}`
       el.setAttribute('role', 'img')
-      el.setAttribute('aria-label', end.name)
-      return new maplibregl.Marker({ element: el }).setLngLat([end.lng, end.lat]).addTo(map)
+      el.setAttribute('aria-label', `${caption}: ${point.name}`)
+      el.innerHTML = `<i>${letter}</i><span><small>${caption}</small><b>${esc(point.short)}</b></span>`
+      // The badge sits exactly on the point; the label opens to whichever side has room.
+      return new maplibregl.Marker({ element: el }).setLngLat([point.lng, point.lat]).addTo(map)
     })
+    flipLabels(map)
+  }
+
+  /** Put each label on the side of its badge with more screen room, so it is never clipped or under a control. */
+  function flipLabels(map: MlMap) {
+    const width = map.getContainer().clientWidth
+    const need = 190
+    for (const marker of ends.current) {
+      const x = map.project(marker.getLngLat()).x
+      const roomRight = width - 70 - x // the zoom / locate buttons sit in the right edge
+      const roomLeft = x
+      marker.getElement().classList.toggle('is-flip', roomRight < need && roomLeft > roomRight)
+    }
   }
 
   /** Draw the active route on from its start, so a new route reads as a path being laid down. */
@@ -191,6 +216,7 @@ const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap({ preset, e
     })
     mapRef.current = map
     map.on('error', (e) => console.error('[rider map]', e.error?.message ?? e))
+    map.on('moveend', () => flipLabels(map))
 
     map.on('load', () => {
       for (const id of ['zones', 'alternatives', 'standard', 'active', 'segments']) map.addSource(id, { type: 'geojson', data: EMPTY })
@@ -276,7 +302,7 @@ const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap({ preset, e
     cancelAnimationFrame(f.frame)
 
     if (!tripChanged) {
-      fit(map)
+      if (!latest.current.following) fit(map)
       drawOn(map, calm ? 0 : 800)
       return
     }
@@ -322,25 +348,48 @@ const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap({ preset, e
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preset.id, active.candidate.id])
 
-  // Glide the puck to its new fix instead of jumping.
+  // Glide the puck to its new fix instead of jumping. While riding, the camera rides along.
   useEffect(() => {
     const p = puck.current
+    const map = mapRef.current
     // During a trip change the choreography places the puck, so it never travels across the city.
     if (!p || flow.current.drawnPreset !== latest.current.preset.id) return
     ;(p.el.firstElementChild as SVGElement).style.transform = `rotate(${bearing}deg)`
     const from = p.at
     const started = performance.now()
+    const linear = following
     let frame = 0
     const step = (now: number) => {
-      const t = Math.min(1, (now - started) / 900)
-      const k = 1 - Math.pow(1 - t, 3)
+      const t = Math.min(1, (now - started) / glideMs)
+      const k = linear ? t : 1 - Math.pow(1 - t, 3)
       p.at = [from[0] + (position[0] - from[0]) * k, from[1] + (position[1] - from[1]) * k]
       p.marker.setLngLat([p.at[1], p.at[0]])
       if (t < 1) frame = requestAnimationFrame(step)
     }
     frame = requestAnimationFrame(step)
+    if (following && map && performance.now() > followHold.current) {
+      map.easeTo({ center: [position[1], position[0]], duration: glideMs, easing: (t) => t, padding: PADDING })
+    }
     return () => cancelAnimationFrame(frame)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [position, bearing])
+
+  // Start following: fly in close to the rider. Stop: show the whole trip again.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !ready.current) return
+    const calm = prefersReducedMotion()
+    if (following) {
+      const at = latest.current.position
+      const duration = calm ? 0 : 1100
+      followHold.current = performance.now() + duration
+      map.flyTo({ center: [at[1], at[0]], zoom: 15.6, duration, easing: easeInOutCubic, padding: PADDING })
+    } else {
+      followHold.current = 0
+      fit(map)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [following])
 
   return (
     <div className="absolute inset-0">

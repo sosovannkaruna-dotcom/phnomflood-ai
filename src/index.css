@@ -17,7 +17,7 @@ body,
 
 body {
   margin: 0;
-  font-family: 'Geist Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-family: 'Geist Variable', 'Noto Sans Khmer Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
   color: #f4f4f5;
   background: #0a0a0b;
@@ -30,13 +30,13 @@ body {
 /* Geist Mono carries every number, id and label */
 .font-mono,
 .cc-popup .maplibregl-popup-content {
-  font-family: 'Geist Mono Variable', ui-monospace, 'SF Mono', Menlo, monospace;
+  font-family: 'Geist Mono Variable', 'Noto Sans Khmer Variable', ui-monospace, 'SF Mono', Menlo, monospace;
   font-variant-numeric: tabular-nums;
 }
 
 /* Display type: Archivo at heavy weight and expanded width, tight tracking */
 .font-display {
-  font-family: 'Archivo Variable', 'Geist Variable', system-ui, sans-serif;
+  font-family: 'Archivo Variable', 'Geist Variable', 'Noto Sans Khmer Variable', system-ui, sans-serif;
   font-stretch: 112%;
   font-weight: 800;
   letter-spacing: -0.035em;
@@ -232,7 +232,7 @@ body::after {
 
 /* Drain ticket: urgency score flag */
 .cc-ticket {
-  font-family: 'Geist Mono Variable', ui-monospace, monospace;
+  font-family: 'Geist Mono Variable', 'Noto Sans Khmer Variable', ui-monospace, monospace;
   font-size: 10px;
   line-height: 1;
   padding: 3px 5px;
@@ -279,20 +279,65 @@ body::after {
   transition: transform 600ms ease;
 }
 
-/* Trip endpoints: ring for the origin, solid square for the destination */
-.rd-end {
+/* Trip endpoints: lettered badge on the point, name label to its right.
+   Start is a dark label on a round badge; destination is a light label on a square badge. */
+.rd-pin {
+  position: relative;
+  width: 30px;
+  height: 30px;
+  pointer-events: none;
   transition: opacity 300ms cubic-bezier(0.23, 1, 0.32, 1);
-  width: 14px;
-  height: 14px;
-  border-radius: 9999px;
-  background: #0a0a0b;
-  border: 3px solid #f4f4f5;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6));
 }
-.rd-end.is-destination {
-  border-radius: 2px;
+.rd-pin > i {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  font: 700 14px/1 'Geist Mono Variable', 'Noto Sans Khmer Variable', ui-monospace, monospace;
+  font-style: normal;
+  color: #0a0a0b;
   background: #f4f4f5;
-  border-color: #0a0a0b;
-  box-shadow: 0 0 0 1.5px #f4f4f5;
+  border: 3px solid #0a0a0b;
+  box-shadow: 0 0 0 2px #f4f4f5;
+}
+.rd-pin.is-start > i {
+  border-radius: 9999px;
+}
+.rd-pin > span {
+  position: absolute;
+  top: 50%;
+  left: 38px;
+  display: flex;
+  max-width: 150px;
+  flex-direction: column;
+  justify-content: center;
+  transform: translateY(-50%);
+  padding: 3px 9px 4px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: #0a0a0b;
+  color: #f4f4f5;
+}
+.rd-pin.is-flip > span {
+  left: auto;
+  right: 38px;
+}
+.rd-pin.is-destination > span {
+  background: #f4f4f5;
+  color: #0a0a0b;
+  border-color: #f4f4f5;
+}
+.rd-pin > span > small {
+  font: 500 10px/1.3 'Geist Mono Variable', 'Noto Sans Khmer Variable', ui-monospace, monospace;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+.rd-pin > span > b {
+  overflow: hidden;
+  font: 600 13px/1.25 'Geist Variable', 'Noto Sans Khmer Variable', system-ui, sans-serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Flood hazard: triangle for stalling-risk water, small square for shallow ponding,
@@ -319,7 +364,7 @@ body::after {
   box-shadow: 0 0 0 1px var(--c);
 }
 .rd-hazard > span {
-  font-family: 'Geist Mono Variable', ui-monospace, monospace;
+  font-family: 'Geist Mono Variable', 'Noto Sans Khmer Variable', ui-monospace, monospace;
   font-size: 12px;
   font-weight: 500;
   line-height: 1;
@@ -366,7 +411,7 @@ body::after {
   color: #a1a1aa;
 }
 .cc-popup .cc-popup-name {
-  font-family: 'Geist Variable', system-ui, sans-serif;
+  font-family: 'Geist Variable', 'Noto Sans Khmer Variable', system-ui, sans-serif;
   font-size: 12px;
   font-weight: 500;
 }
@@ -470,7 +515,7 @@ body::after {
 /* ── Shared tool primitives: the landing page's language, inside the apps ── */
 /* Mono uppercase label: every caption, unit and column head */
 .tl-label {
-  font-family: 'Geist Mono Variable', ui-monospace, monospace;
+  font-family: 'Geist Mono Variable', 'Noto Sans Khmer Variable', ui-monospace, monospace;
   font-size: 11px;
   line-height: 1rem;
   letter-spacing: 0.1em;
@@ -479,7 +524,7 @@ body::after {
 }
 /* Display title: Archivo, heavy, expanded, tight */
 .tl-title {
-  font-family: 'Archivo Variable', 'Geist Variable', system-ui, sans-serif;
+  font-family: 'Archivo Variable', 'Geist Variable', 'Noto Sans Khmer Variable', system-ui, sans-serif;
   font-stretch: 110%;
   font-weight: 800;
   letter-spacing: -0.03em;
@@ -509,7 +554,7 @@ body::after {
   justify-content: center;
   gap: 8px;
 }
-.tl-cta > span:last-child {
+.tl-cta > span:last-child:not(:first-child) {
   display: grid;
   width: 56px;
   place-items: center;
@@ -554,4 +599,15 @@ button,
 a,
 [role='button'] {
   touch-action: manipulation;
+}
+
+/* Khmer: no uppercase or wide tracking (Khmer has no case), and taller lines for stacked vowels */
+html[lang='km'] .tl-label {
+  letter-spacing: 0.02em;
+  line-height: 1.35;
+  text-transform: none;
+}
+html[lang='km'] .tl-title {
+  letter-spacing: 0;
+  line-height: 1.3;
 }

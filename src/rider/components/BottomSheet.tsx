@@ -1,39 +1,51 @@
 import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Motorcycle as Bike, Car, Taxi as CarTaxiFront, Check, MagnifyingGlass as Search, ShieldCheck, Warning as TriangleAlert, ArrowRight, X } from '@phosphor-icons/react'
+import { Motorcycle as Bike, Car, Taxi as CarTaxiFront, Check, MagnifyingGlass as Search, NavigationArrow, ShieldCheck, Stop, Warning as TriangleAlert, X } from '@phosphor-icons/react'
 import { DEPTHS } from '../../lib/severity'
-import type { FloodReport } from '../../shared/types'
-import type { LatLng, VehicleId } from '../types'
+import { useT, type Key } from '../../i18n'
+import type { AppMode } from '../../shared/mode'
+import type { FloodReport, SyncState } from '../../shared/types'
+import type { LatLng, RouteEntry, VehicleId } from '../types'
 import type { Trip } from '../hooks/useTrip'
-import { PRESETS, exposure, metresBetween, passability, routeLengthKm } from '../lib/trip'
+import type { RideStatus } from '../hooks/useRide'
+import { PRESETS, metresBetween, passability, routeLengthKm } from '../lib/trip'
 
-const VEHICLES: { id: VehicleId; label: string; Icon: typeof Bike }[] = [
-  { id: 'moto', label: 'Motorbike', Icon: Bike },
-  { id: 'tuktuk', label: 'Tuk-Tuk', Icon: CarTaxiFront },
-  { id: 'car', label: 'Car', Icon: Car },
+const VEHICLES: { id: VehicleId; Icon: typeof Bike }[] = [
+  { id: 'moto', Icon: Bike },
+  { id: 'tuktuk', Icon: CarTaxiFront },
+  { id: 'car', Icon: Car },
 ]
 const STATUS_COLOR = { dry: '#10B981', caution: '#F59E0B', blocked: '#EF4444' }
-
-function ago(timestamp: number) {
-  const minutes = Math.max(0, Math.round((Date.now() - timestamp) / 60000))
-  return minutes < 1 ? 'now' : minutes < 60 ? `${minutes}m ago` : `${Math.round(minutes / 60)}h ago`
-}
 
 interface Props {
   trip: Trip
   reports: FloodReport[]
   position: LatLng
+  mode: AppMode
+  sync: SyncState
+  ride: RideStatus
+  onStartRide: () => void
+  onStopRide: () => void
   onReport: () => void
   onConfirm: (id: string) => void
   onClear: (id: string) => void
 }
 
 /** Two-detent sheet: riding view when collapsed, route comparison and nearby alerts when expanded. */
-export default function BottomSheet({ trip, reports, position, onReport, onConfirm, onClear }: Props) {
+export default function BottomSheet({ trip, reports, position, mode, sync, ride, onStartRide, onStopRide, onReport, onConfirm, onClear }: Props) {
+  const { t } = useT()
   const [expanded, setExpanded] = useState(false)
   const [searching, setSearching] = useState(false)
   const [query, setQuery] = useState('')
   const { preset, entries, active, vehicle, dryOnly, recalculating } = trip
+
+  const ago = (timestamp: number) => {
+    const minutes = Math.max(0, Math.round((Date.now() - timestamp) / 60000))
+    return minutes < 1 ? t('ago.now') : minutes < 60 ? t('ago.min', { n: minutes }) : t('ago.hour', { n: Math.round(minutes / 60) })
+  }
+  const exposure = (entry: RouteEntry) =>
+    entry.blockers.length ? t('exposure.blocked', { n: entry.blockers.length }) : entry.cautions.length ? t('exposure.caution', { n: entry.cautions.length }) : t('exposure.dry')
+  const syncKey: Key = mode === 'demo' ? 'sync.demo' : (`sync.${sync}` as Key)
 
   const matches = PRESETS.filter((p) => `${p.label} ${p.destination.name} ${p.origin.name}`.toLowerCase().includes(query.toLowerCase()))
   const nearby = reports
@@ -52,7 +64,7 @@ export default function BottomSheet({ trip, reports, position, onReport, onConfi
           if (info.offset.y > 24) setExpanded(false)
         }}
         aria-expanded={expanded}
-        aria-label={expanded ? 'Collapse sheet' : 'Expand sheet for routes and nearby alerts'}
+        aria-label={expanded ? t('sheet.collapse') : t('sheet.expand')}
         className="flex h-7 w-full touch-none items-center justify-center"
       >
         <span className="h-1 w-10 bg-white/25" />
@@ -68,11 +80,11 @@ export default function BottomSheet({ trip, reports, position, onReport, onConfi
                 autoFocus
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Where to? Avoid flooded streets..."
-                aria-label="Destination"
+                placeholder={t('sheet.search')}
+                aria-label={t('sheet.searchLabel')}
                 className="h-full min-w-0 flex-1 select-text bg-transparent text-base text-zinc-100 placeholder:text-zinc-500 focus:outline-none"
               />
-              <button onClick={() => setSearching(false)} aria-label="Close search" className="rd-press grid h-9 w-9 place-items-center text-zinc-400">
+              <button onClick={() => setSearching(false)} aria-label={t('sheet.closeSearch')} className="rd-press grid h-9 w-9 place-items-center text-zinc-400">
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -89,13 +101,13 @@ export default function BottomSheet({ trip, reports, position, onReport, onConfi
                   >
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-medium text-zinc-100">{p.destination.name}</span>
-                      <span className="block truncate text-xs text-zinc-400">from {p.origin.short}</span>
+                      <span className="block truncate text-xs text-zinc-400">{t('sheet.fromShort', { origin: p.origin.short })}</span>
                     </span>
                     {p.id === preset.id ? <Check className="h-5 w-5 shrink-0 text-flare" /> : <span className="shrink-0 font-mono text-xs text-zinc-400">{routeLengthKm(p.candidates[0])} km</span>}
                   </button>
                 </li>
               ))}
-              {!matches.length && <li className="border-t border-white/[0.12] px-1 py-3 text-sm text-zinc-400">No saved trip matches. Try “market” or “RUPP”.</li>}
+              {!matches.length && <li className="border-t border-white/[0.12] px-1 py-3 text-sm text-zinc-400">{t('sheet.noMatch')}</li>}
             </ul>
           </div>
         ) : (
@@ -106,12 +118,12 @@ export default function BottomSheet({ trip, reports, position, onReport, onConfi
                 <Search className="h-5 w-5" />
               </span>
               <span className="flex min-w-0 flex-1 flex-col justify-center px-3">
-                <span className="tl-label">Destination</span>
+                <span className="tl-label truncate">{t('sheet.from', { origin: preset.origin.short })}</span>
                 <span className="tl-title truncate text-base text-zinc-50">{preset.destination.short}</span>
               </span>
               <span className="flex shrink-0 flex-col items-end justify-center border-l border-white/[0.12] px-3">
-                <span className="tl-label">ETA</span>
-                <span className="font-mono text-base text-zinc-50">{active.minutes} min</span>
+                <span className="tl-label">{t('sheet.eta')}</span>
+                <span className="font-mono text-base text-zinc-50">{t('sheet.min', { n: active.minutes })}</span>
               </span>
             </button>
 
@@ -122,29 +134,37 @@ export default function BottomSheet({ trip, reports, position, onReport, onConfi
                 aria-pressed={dryOnly}
                 className={`rd-press flex h-12 shrink-0 items-center gap-2 px-3 text-sm font-medium ${dryOnly ? 'bg-emerald-500/15 text-emerald-400' : 'text-zinc-300'}`}
               >
-                <ShieldCheck className="h-5 w-5" /> Dry only
+                <ShieldCheck className="h-5 w-5" /> {t('sheet.dryOnly')}
               </button>
-              {VEHICLES.map(({ id, label: name, Icon }) => (
+              {VEHICLES.map(({ id, Icon }) => (
                 <button
                   key={id}
                   onClick={() => trip.setVehicle(id)}
                   aria-pressed={vehicle === id}
                   className={`rd-press flex h-12 shrink-0 items-center gap-2 px-3 text-sm font-medium ${vehicle === id ? 'bg-signal text-zinc-50' : 'text-zinc-300'}`}
                 >
-                  <Icon className="h-5 w-5" /> {name}
+                  <Icon className="h-5 w-5" /> {t(`vehicle.${id}` as Key)}
                 </button>
               ))}
             </div>
 
-            {/* Primary action */}
-            <button onClick={onReport} className="tl-cta h-14 text-base">
-              <span>
-                <TriangleAlert className="h-5 w-5" /> Report flood
-              </span>
-              <span>
-                <ArrowRight className="h-5 w-5" />
-              </span>
-            </button>
+            {/* Ride and report: two big targets, report is the hazard-red primary */}
+            <div className="grid grid-cols-[1fr_1.35fr] gap-2">
+              {ride === 'riding' ? (
+                <button onClick={onStopRide} className="rd-press flex h-14 items-center justify-center gap-2 border border-white/25 bg-slab text-base font-semibold text-zinc-50">
+                  <Stop className="h-5 w-5" /> {t('sheet.stop')}
+                </button>
+              ) : (
+                <button onClick={onStartRide} className="rd-press flex h-14 items-center justify-center gap-2 bg-zinc-100 text-base font-semibold text-zinc-950">
+                  <NavigationArrow className="h-5 w-5" /> {t('sheet.start')}
+                </button>
+              )}
+              <button onClick={onReport} className="tl-cta h-14 text-base">
+                <span>
+                  <TriangleAlert className="h-5 w-5" /> {t('sheet.report')}
+                </span>
+              </button>
+            </div>
           </>
         )}
       </div>
@@ -162,7 +182,7 @@ export default function BottomSheet({ trip, reports, position, onReport, onConfi
           >
             <div className="cc-scroll max-h-[38dvh] space-y-5 overflow-y-auto overflow-x-hidden border-t border-white/[0.12] px-3 py-4">
               <section>
-                <h3 className="tl-label pb-2">Routes, time vs flood exposure</h3>
+                <h3 className="tl-label pb-2">{t('sheet.routes')}</h3>
                 <ul className="tl-grid border border-white/[0.12]">
                   {entries.map((entry, i) => {
                     const status = passability(entry)
@@ -180,14 +200,14 @@ export default function BottomSheet({ trip, reports, position, onReport, onConfi
                             <span className="w-1.5 shrink-0" style={{ background: STATUS_COLOR[status] }} />
                             <span className="flex min-w-0 flex-1 flex-col justify-center px-3 py-2">
                               <span className="flex items-baseline gap-2 text-sm font-medium text-zinc-100">
-                                <span className="tl-title text-base">Route {String.fromCharCode(65 + i)}</span>
-                                <span className="font-mono">{entry.minutes} min</span>
+                                <span className="tl-title text-base">{t('sheet.route', { letter: String.fromCharCode(65 + i) })}</span>
+                                <span className="font-mono">{t('sheet.min', { n: entry.minutes })}</span>
                                 <span className="tl-label" style={{ color: STATUS_COLOR[status] }}>
                                   {exposure(entry)}
                                 </span>
                               </span>
                               <span className="mt-0.5 block truncate text-xs text-zinc-400">
-                                via {entry.candidate.via} · <span className="font-mono">{routeLengthKm(entry.candidate)} km</span>
+                                {t('sheet.via')} {entry.candidate.via} · <span className="font-mono">{routeLengthKm(entry.candidate)} km</span>
                               </span>
                             </span>
                             {selected && (
@@ -204,8 +224,11 @@ export default function BottomSheet({ trip, reports, position, onReport, onConfi
               </section>
 
               <section>
-                <h3 className="tl-label pb-2">Rider reports within 2 km</h3>
-                {nearby.length === 0 && <p className="text-sm text-zinc-400">No flood reports near you.</p>}
+                <div className="flex items-baseline justify-between gap-2 pb-2">
+                  <h3 className="tl-label">{t('sheet.nearby')}</h3>
+                </div>
+                <p className={`mb-2 text-xs ${mode === 'live' && sync === 'live' ? 'text-emerald-400' : 'text-zinc-400'}`}>{t(syncKey)}</p>
+                {nearby.length === 0 && <p className="text-sm text-zinc-400">{t('sheet.none')}</p>}
                 <ul className="tl-grid border border-white/[0.12] empty:hidden">
                   {nearby.map(({ report, metres }) => {
                     const depth = DEPTHS[report.depth]
@@ -216,19 +239,20 @@ export default function BottomSheet({ trip, reports, position, onReport, onConfi
                           <p className="shrink-0 font-mono text-xs text-zinc-400">{ago(report.createdAt)}</p>
                         </div>
                         <p className="mt-1 font-mono text-xs" style={{ color: depth.color }}>
-                          ~{report.ai?.depthCm ?? depth.cm} cm · {depth.label}
+                          ~{report.ai?.depthCm ?? depth.cm} cm · {t(`depth.${report.depth}` as Key)}
                           <span className="text-zinc-400">
                             {' '}
-                            · {Math.round(metres / 10) * 10} m away{report.ai ? ' · verified' : ''}
-                            {report.confirmations ? ` · ${report.confirmations} confirmed` : ''}
+                            · {t('sheet.away', { m: Math.round(metres / 10) * 10 })}
+                            {report.ai ? ` · ${t('sheet.verified')}` : ''}
+                            {report.confirmations ? ` · ${t('sheet.confirmed', { n: report.confirmations })}` : ''}
                           </span>
                         </p>
                         <div className="tl-grid mt-3 grid-cols-2 border border-white/[0.12]">
                           <button onClick={() => onConfirm(report.id)} className="rd-press h-12 text-sm font-medium text-zinc-100">
-                            Still flooded
+                            {t('sheet.still')}
                           </button>
                           <button onClick={() => onClear(report.id)} className="rd-press h-12 text-sm font-medium text-emerald-400">
-                            Cleared
+                            {t('sheet.cleared')}
                           </button>
                         </div>
                       </li>

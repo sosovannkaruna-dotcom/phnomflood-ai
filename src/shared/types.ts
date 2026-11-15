@@ -33,7 +33,12 @@ export interface Ticket {
   isNew?: boolean
 }
 
+export type SyncState = 'local' | 'connecting' | 'live' | 'offline'
+
 export interface FloodApi {
+  mode: 'demo' | 'live'
+  /** local: this device only · connecting · live: shared · offline: shared but unreachable */
+  sync: SyncState
   reports: FloodReport[]
   queue: Ticket[]
   ridersRerouted: number

@@ -1,9 +1,13 @@
+import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { ArrowUp, ArrowBendUpLeft as CornerUpLeft, ArrowBendUpRight as CornerUpRight, Flag, CircleNotch as Loader2 } from '@phosphor-icons/react'
+import { ArrowUp, ArrowBendUpLeft as CornerUpLeft, ArrowBendUpRight as CornerUpRight, CloudRain, Flag, CircleNotch as Loader2, X } from '@phosphor-icons/react'
 import { DEPTHS } from '../../lib/severity'
+import { useT } from '../../i18n'
+import type { AppMode } from '../../shared/mode'
+import type { SyncState } from '../../shared/types'
 import type { Place } from '../types'
 import type { Trip } from '../hooks/useTrip'
-import { VEHICLE_NOUN } from '../hooks/useTrip'
+import type { WeatherState } from '../hooks/useWeather'
 import { nextManeuver, passability } from '../lib/trip'
 
 const TURN_ICON = { left: CornerUpLeft, right: CornerUpRight, straight: ArrowUp, arrive: Flag }
@@ -12,11 +16,19 @@ const metres = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${m}
 interface Props {
   trip: Trip
   place: Place
+  mode: AppMode
+  sync: SyncState
+  weather: WeatherState
+  riding: boolean
+  /** An overlay (arrival card) owns the screen: hold back notices and alerts */
+  quiet?: boolean
+  speedFactor: number
   onHome: () => void
 }
 
-/** Status strip plus the turn-by-turn and hazard banner. */
-export default function TopHud({ trip, place, onHome }: Props) {
+/** Status strip, the turn-by-turn and hazard banner, and the rain alert. */
+export default function TopHud({ trip, place, mode, sync, weather, riding, quiet = false, speedFactor, onHome }: Props) {
+  const { t, lang, setLang } = useT()
   const { active, recalculating, notice, fraction, vehicle } = trip
   const { step, metres: distance } = nextManeuver(active.candidate, fraction)
   const Turn = TURN_ICON[step.turn]
@@ -24,29 +36,59 @@ export default function TopHud({ trip, place, onHome }: Props) {
   const deepest = Math.max(0, ...active.cautions.map((r) => r.ai?.depthCm ?? DEPTHS[r.depth].cm))
   const badge =
     status === 'dry'
-      ? { text: 'Dry route', color: '#10B981' }
+      ? { text: t('badge.dry'), color: '#10B981' }
       : status === 'caution'
-        ? { text: `${deepest} cm ahead`, color: '#F59E0B' }
-        : { text: 'Deep water ahead', color: '#EF4444' }
+        ? { text: t('badge.caution', { cm: deepest }), color: '#F59E0B' }
+        : { text: t('badge.blocked'), color: '#EF4444' }
   const barColor = recalculating ? '#F59E0B' : badge.color
+
+  const w = weather.status === 'ready' ? weather.weather : null
+  const [rainDismissed, setRainDismissed] = useState(false)
+  const rainAlert = w?.heavy && !rainDismissed ? (w.rainNow >= 7.6 ? t('weather.heavyNow', { mm: w.rainNow }) : t('weather.heavySoon', { mm: w.next3h })) : null
+
+  const noticeText =
+    notice?.kind === 'nodry'
+      ? t('notice.nodry')
+      : notice?.kind === 'scripted'
+        ? t('notice.scripted')
+        : notice?.kind === 'updated'
+          ? notice.extra > 0
+            ? t('notice.updatedExtra', { min: notice.extra, via: notice.via })
+            : t('notice.updated', { via: notice.via })
+          : null
+
+  const shared = mode === 'live' && sync === 'live'
 
   return (
     <div className="pt-safe pointer-events-none absolute inset-x-3 top-3 z-10 space-y-2">
       {/* Status strip: one hairline-divided slab */}
       <div className="cc-panel pointer-events-auto flex h-11 items-stretch divide-x divide-white/[0.12]">
-        <button onClick={onHome} aria-label="Back to the landing page" title="Back to the landing page" className="cc-btn flex items-center gap-2 px-3">
+        <button onClick={onHome} aria-label={t('hud.home')} title={t('hud.home')} className="cc-btn flex shrink-0 items-center gap-2 px-3">
           <svg viewBox="0 0 20 20" className="h-5 w-5 shrink-0" aria-hidden>
             <path d="M10 1 19 10 10 19 1 10Z" fill="none" stroke="#E8301C" strokeWidth="1.75" />
             <path d="M5 11c1.7-1.4 3.3-1.4 5 0s3.3 1.4 5 0" fill="none" stroke="#F4F4F5" strokeWidth="1.75" strokeLinecap="round" />
           </svg>
-          <span className="tl-title text-sm text-zinc-50">Rider</span>
+          <span className="tl-title text-sm text-zinc-50">{mode === 'demo' ? t('mode.demo') : t('mode.live')}</span>
+          {mode === 'live' && <span className={`h-1.5 w-1.5 rounded-full ${shared ? 'bg-emerald-400' : 'bg-zinc-500'}`} aria-hidden />}
         </button>
         <span className="flex min-w-0 flex-1 items-center px-3" title={`${place.area}, Sangkat ${place.sangkat}, Khan ${place.khan}`}>
           <span className="tl-label truncate text-zinc-200">{place.area}</span>
         </span>
-        <span className="hidden items-center px-3 min-[400px]:flex">
-          <span className="tl-label text-emerald-400">GPS lock</span>
+        <span
+          className={`flex shrink-0 items-center gap-1.5 px-2.5 ${w?.heavy ? 'text-caution' : 'text-zinc-300'}`}
+          title={w ? t('weather.title', { now: w.rainNow, next: w.next3h, chance: w.chance, source: w.source }) : t('weather.unknown')}
+        >
+          <CloudRain className="h-4 w-4" />
+          <span className="tl-label text-current">{w ? (w.rainNow > 0 ? `${w.rainNow}` : t('weather.dry')) : weather.status === 'loading' ? '…' : '–'}</span>
         </span>
+        {riding && (
+          <span className="flex shrink-0 items-center px-2.5">
+            <span className="tl-label text-flare">{t('hud.sim', { x: speedFactor })}</span>
+          </span>
+        )}
+        <button onClick={() => setLang(lang === 'en' ? 'km' : 'en')} aria-label={t('lang.switch')} title={t('lang.switch')} className="cc-btn grid w-11 shrink-0 place-items-center">
+          <span className="text-xs font-semibold text-zinc-200">{t('lang.label')}</span>
+        </button>
       </div>
 
       {/* Turn-by-turn + hazard banner: status colour runs down the left edge */}
@@ -57,7 +99,7 @@ export default function TopHud({ trip, place, onHome }: Props) {
             <div className="flex min-h-[52px] items-center gap-3">
               <Loader2 className="h-7 w-7 shrink-0 animate-spin text-caution" />
               <div className="min-w-0 flex-1 space-y-2">
-                <p className="text-sm font-semibold leading-tight text-amber-400">New flood detected ahead. Recalculating a dry {VEHICLE_NOUN[vehicle]} route...</p>
+                <p className="text-sm font-semibold leading-tight text-amber-400">{t('hud.recalc', { vehicle: t(`noun.${vehicle}`) })}</p>
                 <div className="cc-shimmer h-2 w-2/3" />
               </div>
             </div>
@@ -68,7 +110,12 @@ export default function TopHud({ trip, place, onHome }: Props) {
                 <p className="tl-title text-3xl leading-none text-zinc-50 tabular-nums">{metres(distance)}</p>
                 <p className="mt-1.5 truncate text-sm text-zinc-300">
                   <span className="font-medium text-zinc-100">{step.street}</span>
-                  {step.toward && <span> toward {step.toward}</span>}
+                  {step.toward && (
+                    <span>
+                      {' '}
+                      {t('hud.toward')} {step.toward}
+                    </span>
+                  )}
                 </p>
               </div>
               <span className="tl-label shrink-0 border px-2 py-1" style={{ color: badge.color, borderColor: `${badge.color}88` }}>
@@ -80,16 +127,36 @@ export default function TopHud({ trip, place, onHome }: Props) {
       </div>
 
       <AnimatePresence>
-        {notice && (
+        {noticeText && !quiet && (
           <motion.p
+            key="notice"
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ type: 'spring', stiffness: 420, damping: 30 }}
-            className="pointer-events-auto border border-emerald-500/40 bg-void/95 px-3 py-2 text-xs font-medium text-emerald-400"
+            className={`pointer-events-auto border bg-void/95 px-3 py-2 text-xs font-medium ${notice?.kind === 'scripted' ? 'border-red-500/50 text-red-400' : 'border-emerald-500/40 text-emerald-400'}`}
           >
-            {notice}
+            {noticeText}
           </motion.p>
+        )}
+        {rainAlert && !noticeText && !recalculating && !quiet && (
+          <motion.div
+            key="rain"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ type: 'spring', stiffness: 420, damping: 30 }}
+            className="pointer-events-auto flex items-start gap-2 border border-amber-500/50 bg-void/95 py-2 pl-3 pr-1 text-xs font-medium text-amber-400"
+          >
+            <CloudRain className="mt-0.5 h-4 w-4 shrink-0" />
+            <span className="flex-1 leading-snug">
+              {rainAlert}
+              {w?.simulated ? '' : ` (${w?.source})`}
+            </span>
+            <button onClick={() => setRainDismissed(true)} aria-label={t('weather.dismiss')} className="rd-press grid h-7 w-7 shrink-0 place-items-center text-amber-400/80">
+              <X className="h-4 w-4" />
+            </button>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

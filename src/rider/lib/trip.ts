@@ -129,3 +129,49 @@ export function floodSegment(report: FloodReport): FloodSegment | null {
 }
 
 export const routeLengthKm = (candidate: Candidate) => ((pathLength(candidate.path) as number) / 1000).toFixed(1)
+
+// ── Ride simulation helpers ──
+
+/** Fraction (0–1) along a route of the point nearest to `point`, so a ride continues where the rider is. */
+export function fractionNear(candidate: Candidate, point: LatLng): number {
+  const path = candidate.path
+  let total = 0
+  const cumulative = [0]
+  for (let i = 1; i < path.length; i++) {
+    total += metresBetween(path[i - 1], path[i])
+    cumulative.push(total)
+  }
+  let best = 0
+  let bestDistance = Infinity
+  // Check points every ~25 m along the route for a smooth answer.
+  for (let f = 0; f <= 1.0001; f += Math.min(0.01, 25 / Math.max(total, 1))) {
+    const p = pointAlong(path, f) as LatLng
+    const d = metresBetween(p, point)
+    if (d < bestDistance) {
+      bestDistance = d
+      best = f
+    }
+  }
+  return Math.min(1, best)
+}
+
+/**
+ * A spot ahead of the rider that only the active route uses (furthest from every alternative),
+ * so a flood placed there forces a real reroute instead of blocking every option.
+ */
+export function hazardAhead(preset: Preset, routeId: string, from: number): { point: LatLng; fraction: number } {
+  const route = preset.candidates.find((c) => c.id === routeId) ?? preset.candidates[0]
+  const others = preset.candidates.filter((c) => c.id !== route.id)
+  const start = Math.min(0.75, from + 0.15)
+  let best = Math.min(0.85, from + 0.3)
+  let bestScore = -1
+  for (let f = start; f <= 0.88; f += 0.02) {
+    const p = pointAlong(route.path, f) as LatLng
+    const score = others.length ? Math.min(...others.map((o) => distanceToPath(p, o.path) as number)) : 1
+    if (score > bestScore) {
+      bestScore = score
+      best = f
+    }
+  }
+  return { point: pointAlong(route.path, best) as LatLng, fraction: best }
+}

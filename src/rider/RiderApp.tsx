@@ -5,9 +5,14 @@ import RiderMap, { type RiderMapHandle } from './components/RiderMap'
 import TopHud from './components/TopHud'
 import BottomSheet from './components/BottomSheet'
 import ReportDrawer from './components/ReportDrawer'
+import ArrivalCard from './components/ArrivalCard'
 import { useTrip } from './hooks/useTrip'
-import { placeAt } from './lib/trip'
+import { RIDE_GLIDE_MS, rideSpeedFactor, useRide, useRideClock } from './hooks/useRide'
+import { useWeather } from './hooks/useWeather'
+import { hazardAhead, placeAt } from './lib/trip'
 import { useFlood } from '../shared/useFlood'
+import { useMode } from '../shared/mode'
+import { LangProvider, useT } from '../i18n'
 import type { FloodReport } from '../shared/types'
 import type { MapMode, VisionResult } from './types'
 
@@ -33,16 +38,47 @@ function beep() {
 }
 
 /** Rider / field navigation app: full-bleed map with a three-zone HUD. */
-export default function RiderApp({ onHome }: { onHome: () => void }) {
-  const { reports, addReport, addRerouted, confirmReport, clearReport } = useFlood()
-  const trip = useTrip(reports, () => addRerouted(24 + Math.floor(Math.random() * 18)))
+function Rider({ onHome }: { onHome: () => void }) {
+  const { t } = useT()
+  const appMode = useMode()
+  const { reports, sync, addReport, addRerouted, confirmReport, clearReport } = useFlood()
+  const { ride, setRide, start, stop } = useRide()
+  const riding = ride.status === 'riding'
+  const trip = useTrip(reports, () => addRerouted(24 + Math.floor(Math.random() * 18)), ride.status === 'idle' ? null : ride.fraction)
+  const weather = useWeather(appMode)
   // Depth tags and red / amber hazard markers are always on: they are the warning.
-  const mode: MapMode = 'depth'
+  const mapMode: MapMode = 'depth'
   const [muted, setMuted] = useState(false)
   const [reporting, setReporting] = useState(false)
   const map = useRef<RiderMapHandle>(null)
 
   const place = useMemo(() => placeAt(trip.position), [trip.position])
+  const speedFactor = rideSpeedFactor(trip.active.candidate.distanceM)
+
+  // Demo: a rider ahead reports deep water on the active route, once per ride.
+  const onScriptedFlood = useCallback(
+    (fraction: number) => {
+      const { point } = hazardAhead(trip.preset, trip.active.candidate.id, fraction)
+      const spot = placeAt(point)
+      const now = Date.now()
+      trip.announce({ kind: 'scripted' })
+      addReport({
+        id: `s-${now}`,
+        name: spot.name,
+        area: spot.area,
+        khan: spot.khan,
+        sangkat: spot.sangkat,
+        lat: point[0],
+        lng: point[1],
+        depth: 'waist',
+        source: 'rider',
+        createdAt: now,
+        isNew: true,
+      })
+    },
+    [trip, addReport],
+  )
+  useRideClock({ ride, setRide, trip, mode: appMode, onScriptedFlood })
 
   // Audible alert when a flood forces a reroute.
   useEffect(() => {
@@ -53,7 +89,7 @@ export default function RiderApp({ onHome }: { onHome: () => void }) {
     ({ depth, ai, photo }: { depth: FloodReport['depth']; ai: VisionResult | null; photo: string | null }) => {
       const now = Date.now()
       addReport({
-        id: `r-${now}`,
+        id: `r-${now}-${Math.random().toString(36).slice(2, 7)}`,
         name: place.name,
         area: place.area,
         khan: place.khan,
@@ -64,7 +100,7 @@ export default function RiderApp({ onHome }: { onHome: () => void }) {
         source: 'rider',
         createdAt: now,
         isNew: true,
-        ai: ai as FloodReport['ai'],
+        ai: ai && ai.drainage && ai.depthCm ? { depthCm: ai.depthCm, drainage: ai.drainage } : null,
         photo,
       })
       setReporting(false)
@@ -83,34 +119,58 @@ export default function RiderApp({ onHome }: { onHome: () => void }) {
         active={trip.active}
         recalculating={trip.recalculating}
         reports={reports}
-        mode={mode}
+        mode={mapMode}
         position={trip.position}
         bearing={trip.bearing}
+        following={riding}
+        glideMs={riding ? RIDE_GLIDE_MS : 900}
       />
 
-      <TopHud trip={trip} place={place} onHome={onHome} />
+      <TopHud trip={trip} place={place} mode={appMode} sync={sync} weather={weather} riding={riding} quiet={ride.status === 'arrived'} speedFactor={speedFactor} onHome={onHome} />
 
       {/* Right-edge map controls, in thumb reach just above the sheet */}
       <div className="rd-controls cc-panel absolute right-3 z-10 flex flex-col divide-y divide-white/[0.12]">
-        <button onClick={() => map.current?.recenter()} aria-label="Re-centre on my position" className={control}>
+        <button onClick={() => map.current?.recenter()} aria-label={t('controls.recenter')} className={control}>
           <LocateFixed className="h-5 w-5" />
         </button>
-        <button onClick={() => map.current?.zoomBy(1)} aria-label="Zoom in" className={control}>
+        <button onClick={() => map.current?.zoomBy(1)} aria-label={t('controls.zoomIn')} className={control}>
           <Plus className="h-5 w-5" />
         </button>
-        <button onClick={() => map.current?.zoomBy(-1)} aria-label="Zoom out" className={control}>
+        <button onClick={() => map.current?.zoomBy(-1)} aria-label={t('controls.zoomOut')} className={control}>
           <Minus className="h-5 w-5" />
         </button>
-        <button onClick={() => setMuted((m) => !m)} aria-pressed={muted} aria-label={muted ? 'Unmute audio alerts' : 'Mute audio alerts'} className={control}>
+        <button onClick={() => setMuted((m) => !m)} aria-pressed={muted} aria-label={muted ? t('controls.unmute') : t('controls.mute')} className={control}>
           {muted ? <VolumeX className="h-5 w-5 text-zinc-500" /> : <Volume2 className="h-5 w-5" />}
         </button>
       </div>
 
-      <BottomSheet trip={trip} reports={reports} position={trip.position} onReport={() => setReporting(true)} onConfirm={confirmReport} onClear={clearReport} />
+      <BottomSheet
+        trip={trip}
+        reports={reports}
+        position={trip.position}
+        mode={appMode}
+        sync={sync}
+        ride={ride.status}
+        onStartRide={start}
+        onStopRide={stop}
+        onReport={() => setReporting(true)}
+        onConfirm={confirmReport}
+        onClear={clearReport}
+      />
+
+      <AnimatePresence>{ride.status === 'arrived' && <ArrivalCard key="arrived" trip={trip} speedFactor={speedFactor} onAgain={start} onDone={stop} />}</AnimatePresence>
 
       <AnimatePresence>
         {reporting && <ReportDrawer key="report" place={place} position={trip.position} onClose={() => setReporting(false)} onSubmit={submit} />}
       </AnimatePresence>
     </div>
+  )
+}
+
+export default function RiderApp({ onHome }: { onHome: () => void }) {
+  return (
+    <LangProvider>
+      <Rider onHome={onHome} />
+    </LangProvider>
   )
 }

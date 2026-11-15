@@ -6,16 +6,19 @@ import { PRESETS, analyse, bearingAt, pointAt, riderFraction, safest } from '../
 const RECALC_MS = 1900
 export const VEHICLE_NOUN: Record<VehicleId, string> = { moto: 'motorbike', tuktuk: 'tuk-tuk', car: 'car' }
 
+/** Banner notices are data, so the UI can word them in either language. */
+export type Notice = { kind: 'nodry' } | { kind: 'updated'; extra: number; via: string } | { kind: 'scripted' }
+
 /**
  * Trip state for the rider: which route is active, and the short "recalculating"
  * phase when a new flood report lands on it.
  */
-export function useTrip(reports: FloodReport[], onRerouted: () => void) {
+export function useTrip(reports: FloodReport[], onRerouted: () => void, rideFraction: number | null = null) {
   const [presetId, setPresetId] = useState(PRESETS[0].id)
   const [vehicle, setVehicleState] = useState<VehicleId>('moto')
   const [dryOnly, setDryOnly] = useState(true)
   const [manualId, setManualId] = useState<string | null>(null)
-  const [notice, setNotice] = useState<string | null>(null)
+  const [notice, setNotice] = useState<Notice | null>(null)
 
   const preset = PRESETS.find((p) => p.id === presetId) ?? PRESETS[0]
   const entries = useMemo(() => analyse(preset, reports, vehicle), [preset, reports, vehicle])
@@ -57,11 +60,7 @@ export function useTrip(reports: FloodReport[], onRerouted: () => void) {
       setRecalculating(false)
       onReroutedRef.current()
       const extra = target.minutes - standard.minutes
-      setNotice(
-        target.blockers.length
-          ? 'No fully dry route left. Showing the least-flooded option.'
-          : `Route updated${extra > 0 ? ` · +${extra} min` : ''} · via ${target.candidate.via}`,
-      )
+      setNotice(target.blockers.length ? { kind: 'nodry' } : { kind: 'updated', extra, via: target.candidate.via })
     }, RECALC_MS)
     return () => window.clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -75,7 +74,9 @@ export function useTrip(reports: FloodReport[], onRerouted: () => void) {
   }, [notice])
 
   const active = entries.find((e) => e.candidate.id === shownId) ?? target
-  const fraction = useMemo(() => riderFraction(preset, active.candidate.id), [preset, active.candidate.id])
+  // Parked: a fixed GPS fix part-way along the route. Riding: the simulated ride's progress.
+  const parked = useMemo(() => riderFraction(preset, active.candidate.id), [preset, active.candidate.id])
+  const fraction = rideFraction ?? parked
   const position = useMemo(() => pointAt(active.candidate, fraction), [active.candidate, fraction])
   const bearing = useMemo(() => bearingAt(active.candidate, fraction), [active.candidate, fraction])
 
@@ -104,6 +105,7 @@ export function useTrip(reports: FloodReport[], onRerouted: () => void) {
     setVehicle,
     toggleDryOnly: useCallback(() => setDryOnly((d) => !d), []),
     chooseRoute: setManualId,
+    announce: setNotice,
   }
 }
 
