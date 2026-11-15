@@ -9,6 +9,7 @@ import type { Place } from '../types'
 import type { Trip } from '../hooks/useTrip'
 import type { WeatherState } from '../hooks/useWeather'
 import { nextManeuver, passability } from '../lib/trip'
+import NavBanner from './NavBanner'
 
 const TURN_ICON = { left: CornerUpLeft, right: CornerUpRight, straight: ArrowUp, arrive: Flag }
 const metres = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${m} m`)
@@ -20,6 +21,8 @@ interface Props {
   sync: SyncState
   weather: WeatherState
   riding: boolean
+  /** Turn-by-turn navigation: the status strip gives way to a big turn banner */
+  navigating?: boolean
   /** An overlay (arrival card) owns the screen: hold back notices and alerts */
   quiet?: boolean
   speedFactor: number
@@ -27,7 +30,7 @@ interface Props {
 }
 
 /** Status strip, the turn-by-turn and hazard banner, and the rain alert. */
-export default function TopHud({ trip, place, mode, sync, weather, riding, quiet = false, speedFactor, onHome }: Props) {
+export default function TopHud({ trip, place, mode, sync, weather, riding, navigating = false, quiet = false, speedFactor, onHome }: Props) {
   const { t, lang, setLang } = useT()
   const { active, recalculating, notice, fraction, vehicle } = trip
   const { step, metres: distance } = nextManeuver(active.candidate, fraction)
@@ -61,6 +64,10 @@ export default function TopHud({ trip, place, mode, sync, weather, riding, quiet
 
   return (
     <div className="pt-safe pointer-events-none absolute inset-x-3 top-3 z-10 space-y-2">
+      {navigating ? (
+        <NavBanner trip={trip} />
+      ) : (
+        <>
       {/* Status strip: one hairline-divided slab */}
       <div className="cc-panel pointer-events-auto flex h-11 items-stretch divide-x divide-white/[0.12]">
         <button onClick={onHome} aria-label={t('hud.home')} title={t('hud.home')} className="cc-btn flex shrink-0 items-center gap-2 px-3">
@@ -125,6 +132,9 @@ export default function TopHud({ trip, place, mode, sync, weather, riding, quiet
           )}
         </div>
       </div>
+
+        </>
+      )}
 
       <AnimatePresence>
         {noticeText && !quiet && (

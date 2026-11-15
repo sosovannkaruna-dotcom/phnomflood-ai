@@ -72,6 +72,16 @@ export function placeAt(point: LatLng): Place {
 
 export const metresBetween = (a: LatLng, b: LatLng) => haversine(a, b) as number
 
+/** The turn after next, for a "Then" hint under the main instruction. */
+export function thenManeuver(candidate: Candidate, fraction: number): Maneuver | null {
+  const steps = MANEUVERS[candidate.id] ?? []
+  const upcoming = steps.filter((s) => s.at > fraction + 0.01)
+  return upcoming[1] ?? null
+}
+
+/** Distance left to ride, in metres. */
+export const remainingMetres = (candidate: Candidate, fraction: number) => Math.max(0, Math.round((1 - fraction) * candidate.distanceM))
+
 /** The next turn after the rider's position, with the distance to it. */
 export function nextManeuver(candidate: Candidate, fraction: number): { step: Maneuver; metres: number } {
   const steps = MANEUVERS[candidate.id] ?? []

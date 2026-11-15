@@ -33,7 +33,7 @@ const en = {
   'sheet.min': '{n} min',
   'sheet.dryOnly': 'Dry only',
   'sheet.report': 'Report flood',
-  'sheet.start': 'Start ride',
+  'sheet.start': 'Start',
   'sheet.stop': 'Stop ride',
   'sheet.search': 'Where to? Avoid flooded streets...',
   'sheet.searchLabel': 'Destination',
@@ -128,6 +128,10 @@ const en = {
   'controls.unmute': 'Unmute audio alerts',
   'lang.switch': 'ភាសាខ្មែរ',
   'lang.label': 'ខ្មែរ',
+  'nav.then': 'Then',
+  'nav.exit': 'Exit navigation',
+  'nav.recenter': 'Re-centre',
+  'nav.arrival': '{time} arrival',
 } as const
 
 export type Key = keyof typeof en
@@ -160,7 +164,7 @@ const km: Record<Key, string> = {
   'sheet.min': '{n} នាទី',
   'sheet.dryOnly': 'តែផ្លូវស្ងួត',
   'sheet.report': 'រាយការណ៍ទឹកជំនន់',
-  'sheet.start': 'ចាប់ផ្តើមជិះ',
+  'sheet.start': 'ចាប់ផ្តើម',
   'sheet.stop': 'ឈប់ជិះ',
   'sheet.search': 'ទៅណា? ជៀសផ្លូវលិចទឹក...',
   'sheet.searchLabel': 'គោលដៅ',
@@ -255,6 +259,10 @@ const km: Record<Key, string> = {
   'controls.unmute': 'បើកសំឡេងជូនដំណឹង',
   'lang.switch': 'English',
   'lang.label': 'EN',
+  'nav.then': 'បន្ទាប់',
+  'nav.exit': 'ចេញពីការណែនាំផ្លូវ',
+  'nav.recenter': 'ត្រឡប់មកវិញ',
+  'nav.arrival': 'មកដល់ម៉ោង {time}',
 }
 
 const DICTS: Record<Lang, Record<Key, string>> = { en, km }

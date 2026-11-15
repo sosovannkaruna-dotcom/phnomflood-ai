@@ -9,37 +9,48 @@ import type { LatLng, MapMode, Passability, Preset, RouteEntry } from '../types'
 import { floodSegment, metresBetween, passability } from '../lib/trip'
 
 const STATUS_COLOR: Record<Passability, string> = { dry: '#10B981', caution: '#F59E0B', blocked: '#EF4444' }
+const TRAVELED = '#52525B'
 const lineOf = (path: LatLng[]): LineString => ({ type: 'LineString', coordinates: path.map(([lat, lng]) => [lng, lat]) })
 const collection = <G extends LineString | Point>(features: Feature<G>[]): FeatureCollection<G> => ({ type: 'FeatureCollection', features })
 const EMPTY = collection<LineString>([])
 
 const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2)
 const prefersReducedMotion = () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+/** Signed smallest turn from one compass bearing to another, in degrees (−180…180). */
+const turnBetween = (from: number, to: number) => ((((to - from) % 360) + 540) % 360) - 180
 
-/** The first `fraction` of a path by length, so a route can be drawn on from its start. */
-function slicePath(path: LatLng[], fraction: number): LatLng[] {
-  if (fraction >= 1) return path
-  if (fraction <= 0 || path.length < 2) return path.slice(0, 1)
-  let total = 0
-  for (let i = 1; i < path.length; i++) total += metresBetween(path[i - 1], path[i])
-  const target = total * fraction
-  const out: LatLng[] = [path[0]]
-  let walked = 0
-  for (let i = 1; i < path.length; i++) {
-    const seg = metresBetween(path[i - 1], path[i])
-    if (walked + seg >= target) {
-      const t = seg === 0 ? 0 : (target - walked) / seg
-      out.push([path[i - 1][0] + (path[i][0] - path[i - 1][0]) * t, path[i - 1][1] + (path[i][1] - path[i - 1][1]) * t])
-      return out
+/** The part of a path between two fractions of its length (0–1). */
+function subPath(path: LatLng[], from: number, to: number): LatLng[] {
+  if (path.length < 2 || to <= from) return []
+  const lengths = [0]
+  for (let i = 1; i < path.length; i++) lengths.push(lengths[i - 1] + metresBetween(path[i - 1], path[i]))
+  const total = lengths[lengths.length - 1] || 1
+  const at = (m: number): LatLng => {
+    for (let i = 1; i < path.length; i++) {
+      if (lengths[i] >= m) {
+        const seg = lengths[i] - lengths[i - 1]
+        const t = seg === 0 ? 0 : (m - lengths[i - 1]) / seg
+        return [path[i - 1][0] + (path[i][0] - path[i - 1][0]) * t, path[i - 1][1] + (path[i][1] - path[i - 1][1]) * t]
+      }
     }
-    out.push(path[i])
-    walked += seg
+    return path[path.length - 1]
   }
+  const a = Math.max(0, from) * total
+  const b = Math.min(1, to) * total
+  const out: LatLng[] = [at(a)]
+  for (let i = 1; i < path.length - 1; i++) if (lengths[i] > a && lengths[i] < b) out.push(path[i])
+  out.push(at(b))
   return out
 }
 
-/** Room for the top HUD, the right-edge controls and the collapsed bottom sheet. */
+/** Overview: room for the top HUD, the right-edge controls and the bottom sheet. */
 const PADDING = { top: 176, bottom: 292, left: 48, right: 92 }
+/** Navigation camera: tilted, close, heading up, with the rider in the lower part of the screen. */
+const NAV = { zoom: 16.4, pitch: 58 }
+const navPadding = (map: MlMap) => {
+  const h = map.getContainer().clientHeight
+  return { top: Math.round(h * 0.46), bottom: 104, left: 24, right: 24 }
+}
 
 export interface RiderMapHandle {
   recenter: () => void
@@ -55,49 +66,74 @@ interface Props {
   mode: MapMode
   position: LatLng
   bearing: number
-  /** Riding: the camera follows the rider and the puck moves linearly between ticks. */
-  following: boolean
+  /** Progress along the active route, 0–1 (used while navigating to grey out the ridden part) */
+  progress: number
+  /** Turn-by-turn navigation: tilted, heading-up camera that follows the rider */
+  navigating: boolean
+  /** The rider dragged the map away; the camera stops following until re-centred */
+  panned: boolean
+  onUserPan: () => void
   glideMs: number
 }
 
-const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap({ preset, entries, active, recalculating, reports, mode, position, bearing, following, glideMs }, ref) {
+const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap(props, ref) {
+  const { preset, active, reports, mode, position, bearing, progress, navigating, panned, glideMs } = props
   const container = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MlMap | null>(null)
   const ready = useRef(false)
   const puck = useRef<{ marker: Marker; el: HTMLElement; at: LatLng } | null>(null)
   const ends = useRef<Marker[]>([])
   const hazards = useRef<Marker[]>([])
-  const latest = useRef({ preset, entries, active, recalculating, reports, mode, position, bearing, following })
-  latest.current = { preset, entries, active, recalculating, reports, mode, position, bearing, following }
-  // While the camera flies in to start following, per-tick camera moves wait for it.
-  const followHold = useRef(0)
+  const latest = useRef(props)
+  latest.current = props
   // Trip-change choreography state: which trip is on screen, how much of the route is drawn, whether lines are visible.
-  const flow = useRef({ token: 0, progress: 1, visible: 1, frame: 0, timers: [] as number[], drawnPreset: preset.id, lastRoute: active.candidate.id })
+  const flow = useRef({ progress: 1, visible: 1, frame: 0, timers: [] as number[], drawnPreset: preset.id, lastRoute: active.candidate.id })
+  // Navigation loop: where the puck is gliding, the smoothed camera and puck headings, the ridden fraction.
+  const nav = useRef({ frame: 0, hold: 0, from: position, to: position, fromF: progress, toF: progress, t0: 0, dur: 1, camBearing: bearing, puckBearing: bearing, fraction: progress })
+
+  const flyToRider = (map: MlMap, duration: number) => {
+    const at = nav.current.to
+    nav.current.hold = performance.now() + duration
+    nav.current.camBearing = latest.current.bearing
+    map.flyTo({ center: [at[1], at[0]], zoom: NAV.zoom, pitch: NAV.pitch, bearing: latest.current.bearing, padding: navPadding(map), duration, easing: easeInOutCubic, essential: true })
+  }
 
   useImperativeHandle(ref, () => ({
-    recenter: () => mapRef.current?.flyTo({ center: [latest.current.position[1], latest.current.position[0]], zoom: 15, duration: 900 }),
+    recenter: () => {
+      const map = mapRef.current
+      if (!map) return
+      if (latest.current.navigating) flyToRider(map, prefersReducedMotion() ? 0 : 800)
+      else map.flyTo({ center: [latest.current.position[1], latest.current.position[0]], zoom: 15, duration: 900 })
+    },
     zoomBy: (delta) => mapRef.current?.easeTo({ zoom: (mapRef.current?.getZoom() ?? 13) + delta, duration: 250 }),
   }))
 
   // ── Draw helpers (read the latest props) ──
   function drawRoutes(map: MlMap) {
-    const { entries, active, recalculating, mode } = latest.current
+    const { entries, active, recalculating, mode, navigating } = latest.current
     const standard = entries[0]
     const others = entries.filter((e) => e.candidate.id !== active.candidate.id)
-    // Passability layer: every alternative, coloured by whether this vehicle can ride it.
+    const { progress: drawn, visible } = flow.current
+    const color = recalculating ? '#F59E0B' : STATUS_COLOR[passability(active)]
+    // Overview only: alternatives (passability mode) and the standard route for comparison.
     ;(map.getSource('alternatives') as GeoJSONSource).setData(
-      mode === 'passability' ? collection(others.map((e) => ({ type: 'Feature', properties: { color: STATUS_COLOR[passability(e)] }, geometry: lineOf(e.candidate.path) }))) : EMPTY,
+      !navigating && mode === 'passability' ? collection(others.map((e) => ({ type: 'Feature', properties: { color: STATUS_COLOR[passability(e)] }, geometry: lineOf(e.candidate.path) }))) : EMPTY,
     )
-    // Flood-depth layer: only the standard route, dashed, for comparison.
     ;(map.getSource('standard') as GeoJSONSource).setData(
-      mode === 'depth' && standard.candidate.id !== active.candidate.id
+      !navigating && mode === 'depth' && standard.candidate.id !== active.candidate.id
         ? collection([{ type: 'Feature', properties: { color: standard.blockers.length ? '#EF4444' : '#71717A' }, geometry: lineOf(standard.candidate.path) }])
         : EMPTY,
     )
-    const { progress, visible } = flow.current
-    ;(map.getSource('active') as GeoJSONSource).setData(
-      collection([{ type: 'Feature', properties: { color: recalculating ? '#F59E0B' : STATUS_COLOR[passability(active)] }, geometry: lineOf(slicePath(active.candidate.path, progress)) }]),
-    )
+    if (navigating) {
+      // Navigating: the ridden part turns grey; the rest is drawn forward from the rider.
+      const f = nav.current.fraction
+      const ahead = subPath(active.candidate.path, f, f + (1 - f) * drawn)
+      ;(map.getSource('traveled') as GeoJSONSource).setData(collection([{ type: 'Feature', properties: { color: TRAVELED }, geometry: lineOf(subPath(active.candidate.path, 0, f)) }]))
+      ;(map.getSource('active') as GeoJSONSource).setData(ahead.length > 1 ? collection([{ type: 'Feature', properties: { color }, geometry: lineOf(ahead) }]) : EMPTY)
+    } else {
+      ;(map.getSource('traveled') as GeoJSONSource).setData(EMPTY)
+      ;(map.getSource('active') as GeoJSONSource).setData(collection([{ type: 'Feature', properties: { color }, geometry: lineOf(subPath(active.candidate.path, 0, drawn) ) }]))
+    }
     // Dashed while recalculating; clearing the property restores a solid line.
     map.setPaintProperty('active-line', 'line-dasharray', recalculating ? [1.5, 1.5] : undefined)
     // `visible` fades every route line out and back in around a trip change.
@@ -167,7 +203,7 @@ const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap({ preset, e
     }
   }
 
-  /** Draw the active route on from its start, so a new route reads as a path being laid down. */
+  /** Draw the active route on: from its start in the overview, forward from the rider while navigating. */
   function drawOn(map: MlMap, ms: number) {
     const f = flow.current
     cancelAnimationFrame(f.frame)
@@ -197,7 +233,7 @@ const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap({ preset, e
     const { entries, active } = latest.current
     const bounds = new maplibregl.LngLatBounds()
     for (const path of [active.candidate.path, entries[0].candidate.path]) for (const [lat, lng] of path) bounds.extend([lng, lat])
-    map.fitBounds(bounds, { padding: PADDING, duration: animate && !prefersReducedMotion() ? 1500 : 0, maxZoom: 15, easing: easeInOutCubic })
+    map.fitBounds(bounds, { padding: PADDING, duration: animate && !prefersReducedMotion() ? 1500 : 0, maxZoom: 15, bearing: 0, easing: easeInOutCubic })
   }
 
   // ── Create the map once ──
@@ -209,7 +245,8 @@ const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap({ preset, e
       center: [start[1], start[0]],
       zoom: 12.5,
       minZoom: 10,
-      maxZoom: 17.5,
+      maxZoom: 18.5,
+      maxPitch: 65,
       attributionControl: { compact: true },
       dragRotate: false,
       pitchWithRotate: false,
@@ -217,9 +254,13 @@ const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap({ preset, e
     mapRef.current = map
     map.on('error', (e) => console.error('[rider map]', e.error?.message ?? e))
     map.on('moveend', () => flipLabels(map))
+    // A drag by the rider (not by the camera) pauses following, like any navigation app.
+    map.on('dragstart', (e) => {
+      if (latest.current.navigating && (e as { originalEvent?: Event }).originalEvent) latest.current.onUserPan()
+    })
 
     map.on('load', () => {
-      for (const id of ['zones', 'alternatives', 'standard', 'active', 'segments']) map.addSource(id, { type: 'geojson', data: EMPTY })
+      for (const id of ['zones', 'alternatives', 'standard', 'traveled', 'active', 'segments']) map.addSource(id, { type: 'geojson', data: EMPTY })
       const round = { 'line-cap': 'round', 'line-join': 'round' } as const
       const color = ['get', 'color'] as unknown as string
 
@@ -233,28 +274,38 @@ const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap({ preset, e
           'circle-stroke-color': color,
           'circle-stroke-opacity': 0.5,
           'circle-stroke-width': 1,
+          'circle-pitch-alignment': 'map',
           // Constant ground size (≈190 m at r = 1) across zoom levels
-          'circle-radius': ['interpolate', ['exponential', 2], ['zoom'], 10, ['*', 2.5, ['get', 'r']], 17, ['*', 320, ['get', 'r']]] as unknown as number,
+          'circle-radius': ['interpolate', ['exponential', 2], ['zoom'], 10, ['*', 2.5, ['get', 'r']], 18, ['*', 640, ['get', 'r']]] as unknown as number,
         },
       })
       map.addLayer({ id: 'alt-lines', type: 'line', source: 'alternatives', layout: round, paint: { 'line-color': color, 'line-width': 4, 'line-opacity': 0.7 } })
       map.addLayer({ id: 'standard-line', type: 'line', source: 'standard', layout: round, paint: { 'line-color': color, 'line-width': 3.5, 'line-dasharray': [0.6, 2.2], 'line-opacity': 0.9 } })
-      map.addLayer({ id: 'active-casing', type: 'line', source: 'active', layout: round, paint: { 'line-color': '#0A0A0B', 'line-width': 10 } })
-      map.addLayer({ id: 'active-line', type: 'line', source: 'active', layout: round, paint: { 'line-color': color, 'line-width': 5.5 } })
+      map.addLayer({ id: 'traveled-line', type: 'line', source: 'traveled', layout: round, paint: { 'line-color': color, 'line-width': ['interpolate', ['linear'], ['zoom'], 13, 5, 17, 12] as unknown as number } })
+      map.addLayer({ id: 'active-casing', type: 'line', source: 'active', layout: round, paint: { 'line-color': '#0A0A0B', 'line-width': ['interpolate', ['linear'], ['zoom'], 13, 10, 17, 20] as unknown as number } })
+      map.addLayer({ id: 'active-line', type: 'line', source: 'active', layout: round, paint: { 'line-color': color, 'line-width': ['interpolate', ['linear'], ['zoom'], 13, 5.5, 17, 13] as unknown as number } })
       // Flood segments sit on top of the roads they cover
       map.addLayer({ id: 'seg-wet', type: 'line', source: 'segments', filter: ['==', ['get', 'kind'], 'wet'], layout: round, paint: { 'line-color': '#0EA5E9', 'line-width': 4, 'line-dasharray': [1, 1.8] } })
       map.addLayer({ id: 'seg-caution', type: 'line', source: 'segments', filter: ['==', ['get', 'kind'], 'caution'], layout: round, paint: { 'line-color': '#F59E0B', 'line-width': 8 } })
       map.addLayer({ id: 'seg-impassable', type: 'line', source: 'segments', filter: ['==', ['get', 'kind'], 'impassable'], layout: round, paint: { 'line-color': '#EF4444', 'line-width': 9 } })
 
-      // Rider puck with heading cone
+      // Rider puck: a dot with a heading cone in the overview, a flat arrow on the road while navigating.
+      // It is aligned to the map, so it turns and tilts with the street.
       const el = document.createElement('div')
       el.className = 'rd-puck'
-      el.innerHTML = '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 32 12 2a36 36 0 0 1 40 0Z" fill="#F4F4F5" fill-opacity="0.22"/><circle cx="32" cy="32" r="10" fill="#0A0A0B"/><circle cx="32" cy="32" r="7.5" fill="#F4F4F5" stroke="#0A0A0B" stroke-width="2"/><path d="M32 26.500 35.500 34 32 32.500 28.500 34Z" fill="#0A0A0B"/></svg>'
+      el.innerHTML =
+        '<svg viewBox="0 0 64 64" aria-hidden="true">' +
+        '<g class="puck-dot"><path d="M32 32 12 2a36 36 0 0 1 40 0Z" fill="#F4F4F5" fill-opacity="0.22"/><circle cx="32" cy="32" r="10" fill="#0A0A0B"/><circle cx="32" cy="32" r="7.5" fill="#F4F4F5" stroke="#0A0A0B" stroke-width="2"/><path d="M32 26.500 35.500 34 32 32.500 28.500 34Z" fill="#0A0A0B"/></g>' +
+        '<g class="puck-arrow"><path d="M32 8 52 54 32 44 12 54Z" fill="#F4F4F5" stroke="#0A0A0B" stroke-width="4" stroke-linejoin="round"/></g>' +
+        '</svg>'
       el.setAttribute('role', 'img')
       el.setAttribute('aria-label', 'Your position')
       const at = latest.current.position
-      puck.current = { el, at, marker: new maplibregl.Marker({ element: el }).setLngLat([at[1], at[0]]).addTo(map) }
-      ;(el.firstElementChild as SVGElement).style.transform = `rotate(${latest.current.bearing}deg)`
+      puck.current = {
+        el,
+        at,
+        marker: new maplibregl.Marker({ element: el, rotationAlignment: 'map', pitchAlignment: 'map' }).setLngLat([at[1], at[0]]).setRotation(latest.current.bearing).addTo(map),
+      }
 
       for (const id of ['alt-lines', 'standard-line', 'active-casing', 'active-line']) map.setPaintProperty(id, 'line-opacity-transition', { duration: 320, delay: 0 })
 
@@ -268,6 +319,7 @@ const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap({ preset, e
     return () => {
       ready.current = false
       cancelAnimationFrame(flow.current.frame)
+      cancelAnimationFrame(nav.current.frame)
       flow.current.timers.forEach((t) => window.clearTimeout(t))
       map.remove()
       mapRef.current = null
@@ -279,7 +331,7 @@ const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap({ preset, e
     // While a trip change is being choreographed, that effect owns the drawing.
     if (mapRef.current && ready.current && flow.current.drawnPreset === latest.current.preset.id) drawRoutes(mapRef.current)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entries, active, recalculating, mode])
+  }, [props.entries, active, props.recalculating, mode])
 
   useEffect(() => {
     if (mapRef.current && ready.current) drawFloods(mapRef.current)
@@ -302,7 +354,7 @@ const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap({ preset, e
     cancelAnimationFrame(f.frame)
 
     if (!tripChanged) {
-      if (!latest.current.following) fit(map)
+      if (!latest.current.navigating) fit(map)
       drawOn(map, calm ? 0 : 800)
       return
     }
@@ -325,8 +377,7 @@ const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap({ preset, e
           if (p) {
             const at = latest.current.position
             p.at = at
-            p.marker.setLngLat([at[1], at[0]])
-            ;(p.el.firstElementChild as SVGElement).style.transform = `rotate(${latest.current.bearing}deg)`
+            p.marker.setLngLat([at[1], at[0]]).setRotation(latest.current.bearing)
           }
           fit(map)
 
@@ -348,48 +399,96 @@ const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap({ preset, e
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preset.id, active.candidate.id])
 
-  // Glide the puck to its new fix instead of jumping. While riding, the camera rides along.
+  // Overview: glide the puck to its new fix instead of jumping.
   useEffect(() => {
     const p = puck.current
-    const map = mapRef.current
-    // During a trip change the choreography places the puck, so it never travels across the city.
-    if (!p || flow.current.drawnPreset !== latest.current.preset.id) return
-    ;(p.el.firstElementChild as SVGElement).style.transform = `rotate(${bearing}deg)`
+    if (!p || navigating || flow.current.drawnPreset !== latest.current.preset.id) return
+    p.marker.setRotation(bearing)
     const from = p.at
     const started = performance.now()
-    const linear = following
     let frame = 0
     const step = (now: number) => {
       const t = Math.min(1, (now - started) / glideMs)
-      const k = linear ? t : 1 - Math.pow(1 - t, 3)
+      const k = 1 - Math.pow(1 - t, 3)
       p.at = [from[0] + (position[0] - from[0]) * k, from[1] + (position[1] - from[1]) * k]
       p.marker.setLngLat([p.at[1], p.at[0]])
       if (t < 1) frame = requestAnimationFrame(step)
     }
     frame = requestAnimationFrame(step)
-    if (following && map && performance.now() > followHold.current) {
-      map.easeTo({ center: [position[1], position[0]], duration: glideMs, easing: (t) => t, padding: PADDING })
-    }
     return () => cancelAnimationFrame(frame)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [position, bearing])
 
-  // Start following: fly in close to the rider. Stop: show the whole trip again.
+  // Navigating: each new fix starts a linear glide that the frame loop below plays out.
+  useEffect(() => {
+    if (!navigating || !puck.current) return
+    const n = nav.current
+    n.from = puck.current.at
+    n.to = position
+    n.fromF = n.fraction
+    n.toF = progress
+    n.t0 = performance.now()
+    n.dur = glideMs
+  }, [position, progress, navigating, glideMs])
+
+  // Start navigation: tilt and turn the camera behind the rider, then run a per-frame loop that moves
+  // the puck, turns smoothly through corners and keeps the camera on the rider. Stop: back to the overview.
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !ready.current) return
+    const p = puck.current
+    if (!map || !ready.current || !p) return
     const calm = prefersReducedMotion()
-    if (following) {
-      const at = latest.current.position
-      const duration = calm ? 0 : 1100
-      followHold.current = performance.now() + duration
-      map.flyTo({ center: [at[1], at[0]], zoom: 15.6, duration, easing: easeInOutCubic, padding: PADDING })
-    } else {
-      followHold.current = 0
-      fit(map)
+    const n = nav.current
+    p.el.toggleAttribute('data-nav', navigating)
+    // Navigating from the start point: the rider arrow replaces the "A" pin there.
+    const startPin = ends.current[0]?.getElement()
+    if (startPin) startPin.style.visibility = navigating ? 'hidden' : ''
+
+    if (!navigating) {
+      cancelAnimationFrame(n.frame)
+      flow.current.progress = 1
+      drawRoutes(map)
+      map.easeTo({ pitch: 0, bearing: 0, duration: calm ? 0 : 700, easing: easeInOutCubic })
+      const t = window.setTimeout(() => fit(map), calm ? 0 : 720)
+      return () => window.clearTimeout(t)
     }
+
+    n.from = n.to = position
+    n.fromF = n.toF = n.fraction = progress
+    n.t0 = performance.now()
+    n.dur = 1
+    n.camBearing = n.puckBearing = bearing
+    flyToRider(map, calm ? 0 : 1300)
+
+    const loop = (now: number) => {
+      const k = Math.min(1, (now - n.t0) / Math.max(1, n.dur))
+      const at: LatLng = [n.from[0] + (n.to[0] - n.from[0]) * k, n.from[1] + (n.to[1] - n.from[1]) * k]
+      n.fraction = n.fromF + (n.toF - n.fromF) * k
+      p.at = at
+      p.marker.setLngLat([at[1], at[0]])
+      // Ease the headings toward the route's direction so corners turn smoothly, not in one jump.
+      const target = latest.current.bearing
+      n.puckBearing += turnBetween(n.puckBearing, target) * (calm ? 1 : 0.18)
+      n.camBearing += turnBetween(n.camBearing, target) * (calm ? 1 : 0.06)
+      p.marker.setRotation(n.puckBearing)
+      if (!latest.current.panned && now > n.hold) {
+        map.jumpTo({ center: [at[1], at[0]], bearing: n.camBearing, padding: navPadding(map) })
+      }
+      drawRoutes(map)
+      n.frame = requestAnimationFrame(loop)
+    }
+    n.frame = requestAnimationFrame(loop)
+    return () => cancelAnimationFrame(n.frame)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [following])
+  }, [navigating])
+
+  // Re-centred after a drag: fly back behind the rider.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !ready.current || !navigating || panned) return
+    flyToRider(map, prefersReducedMotion() ? 0 : 700)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [panned])
 
   return (
     <div className="absolute inset-0">

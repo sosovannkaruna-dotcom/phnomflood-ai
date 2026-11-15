@@ -15,10 +15,12 @@ export interface RideState {
 }
 
 const TICK_MS = 200
+/** Demo: how long after Start the scripted flood is reported */
+const SCRIPTED_FLOOD_MS = 4000
 /** A city motorbike in rain traffic, about 25 km/h. */
 const REAL_SPEED = 25 / 3.6
-/** The simulation runs at least 20× real time, faster on long trips so no ride takes over a minute. */
-export const rideSpeed = (distanceM: number) => Math.max(REAL_SPEED * 20, distanceM / 55)
+/** The simulation runs at least 10× real time, faster on long trips so no ride takes much over a minute. */
+export const rideSpeed = (distanceM: number) => Math.max(REAL_SPEED * 10, distanceM / 75)
 export const rideSpeedFactor = (distanceM: number) => Math.round(rideSpeed(distanceM) / REAL_SPEED)
 /** The puck and camera move between ticks with a linear glide of the same length. */
 export const RIDE_GLIDE_MS = TICK_MS + 40
@@ -43,40 +45,30 @@ export function useRideClock({
   setRide,
   trip,
   mode,
+  paused = false,
   onScriptedFlood,
 }: {
   ride: RideState
   setRide: React.Dispatch<React.SetStateAction<RideState>>
   trip: Trip
   mode: AppMode
+  /** Hold position, e.g. while the rider fills in a report */
+  paused?: boolean
   onScriptedFlood: (fraction: number) => void
 }) {
-  const latest = useRef({ trip, onScriptedFlood })
-  latest.current = { trip, onScriptedFlood }
+  const latest = useRef({ trip, onScriptedFlood, paused })
+  latest.current = { trip, onScriptedFlood, paused }
 
-  // Advance.
+  // The rider stays put at the start of the route: navigation is shown, not played forward.
+  // Demo: a few seconds in, a rider ahead reports deep water, so the reroute happens on cue.
   useEffect(() => {
-    if (ride.status !== 'riding') return
-    const timer = window.setInterval(() => {
-      const { trip } = latest.current
-      if (trip.recalculating) return // the rider slows while the new route is found
-      const length = Math.max(1, trip.active.candidate.distanceM)
-      const step = (rideSpeed(length) * TICK_MS) / 1000 / length
-      setRide((r) => {
-        if (r.status !== 'riding') return r
-        const fraction = Math.min(1, r.fraction + step)
-        return fraction >= 0.995 ? { ...r, status: 'arrived', fraction: 1 } : { ...r, fraction }
-      })
-    }, TICK_MS)
-    return () => window.clearInterval(timer)
-  }, [ride.status, setRide])
-
-  // Demo: once the rider is under way, a flood is reported on the road ahead.
-  useEffect(() => {
-    if (mode !== 'demo' || ride.status !== 'riding' || ride.scripted || ride.fraction < 0.16) return
-    setRide((r) => ({ ...r, scripted: true }))
-    latest.current.onScriptedFlood(ride.fraction)
-  }, [ride, mode, setRide])
+    if (mode !== 'demo' || ride.status !== 'riding' || ride.scripted) return
+    const timer = window.setTimeout(() => {
+      setRide((r) => (r.status === 'riding' && !r.scripted ? { ...r, scripted: true } : r))
+      latest.current.onScriptedFlood(ride.fraction)
+    }, SCRIPTED_FLOOD_MS)
+    return () => window.clearTimeout(timer)
+  }, [ride.status, ride.scripted, ride.fraction, mode, setRide])
 
   // The active route changed mid-ride: carry on from where the rider is now.
   const lastRoute = useRef(trip.active.candidate.id)

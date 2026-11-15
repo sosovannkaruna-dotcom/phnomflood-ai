@@ -276,7 +276,14 @@ body::after {
 .rd-puck > svg {
   width: 100%;
   height: 100%;
-  transition: transform 600ms ease;
+}
+/* Overview: dot with heading cone. Navigating: a flat arrow lying on the road. */
+.rd-puck .puck-arrow,
+.rd-puck[data-nav] .puck-dot {
+  display: none;
+}
+.rd-puck[data-nav] .puck-arrow {
+  display: inline;
 }
 
 /* Trip endpoints: lettered badge on the point, name label to its right.
@@ -610,4 +617,12 @@ html[lang='km'] .tl-label {
 html[lang='km'] .tl-title {
   letter-spacing: 0;
   line-height: 1.3;
+}
+
+/* Navigation: controls and the map credit sit just above the navigation bar */
+.rd-root.is-nav .rd-controls {
+  bottom: calc(118px + env(safe-area-inset-bottom, 0px));
+}
+.rd-root.is-nav .maplibregl-ctrl-bottom-right {
+  bottom: calc(118px + env(safe-area-inset-bottom, 0px));
 }
