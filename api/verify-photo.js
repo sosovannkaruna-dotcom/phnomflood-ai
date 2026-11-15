@@ -40,9 +40,11 @@ const SCHEMA = {
 }
 
 const DEFAULT_CM = { ankle: 10, knee: 25, waist: 45 }
-const FALLBACK_MODELS = ['gemini-3.8-flash', 'gemini-flash-latest']
+// Fast Flash-Lite first (a photo check should take seconds), then full Flash, then Google's aliases.
+const FALLBACK_MODELS = ['gemini-flash-lite-latest', 'gemini-3.8-flash', 'gemini-flash-latest']
 // Whole request budget, under the 60 s limit set for this function in vercel.json.
 const DEADLINE_MS = 55_000
+const PER_MODEL_MS = 15_000
 
 function rateLimited(ip) {
   const now = Date.now()
@@ -93,38 +95,54 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'bad_image' })
   if (!ALLOWED.has(mimeType)) return res.status(400).json({ error: 'bad_type' })
 
+  // Try models in order; a missing, overloaded or slow model hands over to the next one.
   const models = [...new Set([process.env.GEMINI_MODEL, ...FALLBACK_MODELS].filter(Boolean))]
   const started = Date.now()
-  try {
-    let upstream = null
-    for (const model of models) {
-      // Newer models think before answering; low effort keeps a photo check to a few seconds.
-      let thinking = true
-      for (let attempt = 0; attempt < 3; attempt++) {
-        const remaining = DEADLINE_MS - (Date.now() - started)
-        if (remaining < 3000) break
-        upstream = await callGemini(key, model, mimeType, image, thinking, remaining)
-        if (upstream.status === 400 && thinking) {
-          thinking = false // this model does not take the thinking setting: ask again without it
-          continue
-        }
-        if (upstream.status === 503 && attempt === 0) {
-          await new Promise((r) => setTimeout(r, 800)) // briefly overloaded: one quick retry
-          continue
+  // What happened with each model, returned on failure so a problem can be diagnosed (never the key).
+  const tried = []
+  let last = null
+  for (const model of models) {
+    // Newer models think before answering; low effort keeps a photo check to a few seconds.
+    let thinking = true
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const remaining = DEADLINE_MS - (Date.now() - started)
+      if (remaining < 3000) break
+      const t0 = Date.now()
+      let upstream
+      try {
+        upstream = await callGemini(key, model, mimeType, image, thinking, Math.min(PER_MODEL_MS, remaining))
+      } catch (error) {
+        tried.push({ model, result: error?.name === 'TimeoutError' ? 'timeout' : 'network', ms: Date.now() - t0 })
+        break // slow or unreachable: next model
+      }
+      tried.push({ model, thinking, result: upstream.status, ms: Date.now() - t0 })
+      if (upstream.ok) {
+        try {
+          const json = await upstream.json()
+          const text = (json.candidates?.[0]?.content?.parts ?? []).find((p) => typeof p.text === 'string' && !p.thought)?.text
+          if (text) return res.status(200).json(normalize(JSON.parse(text)))
+          last = 'empty'
+        } catch {
+          last = 'bad_json'
         }
         break
       }
-      if (!upstream || upstream.status !== 404) break // only a missing model moves on to the next one
+      last = upstream.status
+      if (upstream.status === 400 && thinking) {
+        thinking = false // this model does not take the thinking setting: ask again without it
+        continue
+      }
+      if (upstream.status === 503 && attempt === 0) {
+        await new Promise((r) => setTimeout(r, 800)) // briefly overloaded: one quick retry
+        continue
+      }
+      break
     }
-    if (!upstream) return res.status(504).json({ error: 'timeout' })
-    if (!upstream.ok) return res.status(502).json({ error: 'upstream', status: upstream.status })
-    const json = await upstream.json()
-    const text = (json.candidates?.[0]?.content?.parts ?? []).find((p) => typeof p.text === 'string' && !p.thought)?.text
-    if (!text) return res.status(502).json({ error: 'empty' })
-    return res.status(200).json(normalize(JSON.parse(text)))
-  } catch (error) {
-    return res.status(error?.name === 'TimeoutError' ? 504 : 502).json({ error: error?.name === 'TimeoutError' ? 'timeout' : 'upstream' })
+    // Key or quota problems will not be fixed by another model.
+    if (last === 401 || last === 403 || last === 429) break
   }
+  const timedOut = tried.length > 0 && tried.every((t) => t.result === 'timeout')
+  return res.status(timedOut ? 504 : 502).json({ error: timedOut ? 'timeout' : 'upstream', status: typeof last === 'number' ? last : undefined, tried })
 }
 
 function callGemini(key, model, mimeType, image, thinking, timeoutMs) {
