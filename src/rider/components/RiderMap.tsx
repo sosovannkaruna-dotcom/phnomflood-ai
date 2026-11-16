@@ -6,6 +6,7 @@ import { RIDER_MAP_STYLE } from '../../shared/mapStyle'
 import type { FloodReport } from '../../shared/types'
 import type { LatLng, MapMode, Passability, Preset, RouteEntry } from '../types'
 import { floodSegment, metresBetween, passability } from '../lib/trip'
+import { RADAR_MAX_ZOOM, fetchRadarFrames } from '../../services/radar'
 
 const STATUS_COLOR: Record<Passability, string> = { dry: '#10B981', caution: '#F59E0B', blocked: '#EF4444' }
 const TRAVELED = '#52525B'
@@ -82,6 +83,10 @@ interface Props {
   onFloodTap?: (reportId: string) => void
   /** Live, heavy rain: places that flooded on two or more days (predicted, drawn apart from reports) */
   hotspots?: { lat: number; lng: number; days: number; deep: number }[]
+  /** Live: show the animated rain radar */
+  radar?: boolean
+  /** The radar frame on screen (unix seconds), or null when off or unavailable */
+  onRadarFrame?: (time: number | null) => void
 }
 
 const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap(props, ref) {
@@ -365,6 +370,77 @@ const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap(props, ref)
     if (mapRef.current && ready.current && flow.current.drawnPreset === latest.current.preset.id) drawRoutes(mapRef.current)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.entries, active, props.recalculating, mode])
+
+  // Rain radar: one hidden raster layer per frame under everything else; the frames take turns
+  // (opacity, so no tile reloads), holding on the latest. Refreshed every ten minutes.
+  useEffect(() => {
+    const map = mapRef.current
+    const report = (time: number | null) => latest.current.onRadarFrame?.(time)
+    if (!props.radar || !map) {
+      report(null)
+      return
+    }
+    let stopped = false
+    let timer = 0
+    let refresh = 0
+    let ids: string[] = []
+    const controller = new AbortController()
+    const clear = () => {
+      window.clearTimeout(timer)
+      for (const id of ids) {
+        if (map.getLayer(id)) map.removeLayer(id)
+        if (map.getSource(id)) map.removeSource(id)
+      }
+      ids = []
+    }
+    const load = async () => {
+      let frames
+      try {
+        frames = await fetchRadarFrames(controller.signal)
+      } catch {
+        if (!stopped) report(null)
+        return
+      }
+      if (stopped || !frames.length) return
+      const add = () => {
+        clear()
+        const below = map.getLayer('hotspot-disc') ? 'hotspot-disc' : undefined
+        frames.forEach((f, i) => {
+          const id = `radar-${f.time}`
+          map.addSource(id, { type: 'raster', tiles: [f.tiles], tileSize: 256, maxzoom: RADAR_MAX_ZOOM, attribution: 'RainViewer' })
+          map.addLayer({ id, type: 'raster', source: id, paint: { 'raster-opacity': 0, 'raster-resampling': 'linear', 'raster-fade-duration': 0 } }, below)
+          map.setPaintProperty(id, 'raster-opacity-transition', { duration: 250, delay: 0 })
+          ids.push(id)
+          if (i === frames.length - 1) map.setPaintProperty(id, 'raster-opacity', 0.55)
+        })
+        report(frames[frames.length - 1].time)
+        if (prefersReducedMotion()) return
+        let at = frames.length - 1
+        const tick = () => {
+          if (stopped) return
+          const prev = ids[at]
+          at = (at + 1) % ids.length
+          if (map.getLayer(prev)) map.setPaintProperty(prev, 'raster-opacity', 0)
+          if (map.getLayer(ids[at])) map.setPaintProperty(ids[at], 'raster-opacity', 0.55)
+          report(frames![at].time)
+          timer = window.setTimeout(tick, at === ids.length - 1 ? 2000 : 450)
+        }
+        timer = window.setTimeout(tick, 2000)
+      }
+      if (ready.current) add()
+      else map.once('load', add)
+    }
+    void load()
+    refresh = window.setInterval(() => void load(), 10 * 60 * 1000)
+    return () => {
+      stopped = true
+      controller.abort()
+      window.clearInterval(refresh)
+      clear()
+      report(null)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.radar])
 
   useEffect(() => {
     if (mapRef.current && ready.current) drawHotspots(mapRef.current)

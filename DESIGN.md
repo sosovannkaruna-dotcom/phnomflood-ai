@@ -285,6 +285,12 @@ Moves between pages use the browser's View Transitions: the landing page is the 
 ### Flood-Prone Spots
 Places riders have reported water on two or more days, drawn as soft Water discs (13–20% fill, a 1.25 px Water ring) under every route and report, larger where it has flooded on more days. They appear by themselves in heavy rain, with a sheet line that always says "predicted from past reports, not reported now"; Water, never red or amber, keeps a prediction from reading as a report.
 
+### Flood Replay
+On the Open data page: a dark map with report dots in their depth colour (a soft halo grows with confirmations) above a Slab timeline. A square Hazard Red play button, the moment in mono, 24 h / 7 days / 30 days chips, red bars for reports per hour, and a range with a square Hazard Red handle on a 2px hairline track. A report shows from when it was made until it was cleared, or 24 hours at most.
+
+### Rain Radar
+On the live map, under every route and report: RainViewer's last two hours in its blue scheme at 55% opacity, frames taking turns every 450 ms and holding two seconds on the latest (one still frame under reduced motion). A cloud button among the map controls switches it; a small caption above the sheet names the frame time, the source and that coverage is regional.
+
 ### Map Marks (signature)
 - **Flood lines:** thin translucent lines in the depth colour along the flooded stretch; no markers or tags on the line itself.
 - **Rider puck:** a Paper dot with a heading cone; while navigating, a flat arrow lying on the road. In water it pulses between Paper and the flood colour, with the flood glow.

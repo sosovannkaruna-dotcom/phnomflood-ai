@@ -12,6 +12,13 @@ const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 export const syncConfigured = Boolean(URL && KEY)
 
+/** An error that carries the HTTP status, so the outbox can tell "try later" from "never". */
+function failed(res) {
+  const error = new Error(`Supabase responded ${res.status}`)
+  error.status = res.status
+  return error
+}
+
 const headers = () => ({
   apikey: KEY,
   Authorization: `Bearer ${KEY}`,
@@ -65,7 +72,7 @@ export async function insertReport(report) {
     headers: { ...headers(), Prefer: 'return=minimal' },
     body: JSON.stringify(body),
   })
-  if (!res.ok) throw new Error(`Supabase responded ${res.status}`)
+  if (!res.ok) throw failed(res)
 }
 
 async function rpc(name, id) {
@@ -74,7 +81,7 @@ async function rpc(name, id) {
     headers: headers(),
     body: JSON.stringify({ p_id: id }),
   })
-  if (!res.ok) throw new Error(`Supabase responded ${res.status}`)
+  if (!res.ok) throw failed(res)
 }
 
 /**

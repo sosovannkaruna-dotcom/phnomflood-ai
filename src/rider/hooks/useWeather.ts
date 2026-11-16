@@ -15,6 +15,8 @@ export interface Weather {
   observedAt: string | null
   /** Live only: rain in 15-minute steps for the next six hours (start time, mm/h) */
   series?: RainSlot[]
+  /** Live, no signal: when this reading was saved on the phone */
+  savedAt?: number
 }
 
 export interface RainSlot {
@@ -25,6 +27,28 @@ export interface RainSlot {
 export type WeatherState = { status: 'loading' } | { status: 'ready'; weather: Weather } | { status: 'error' }
 
 const REFRESH_MS = 10 * 60 * 1000
+// Live: the last reading, kept for up to six hours so a phone with no signal still shows the rain.
+const SAVED = 'phnomflood.weather'
+const SAVED_MAX_MS = 6 * 3600 * 1000
+
+function loadSaved(): Weather | null {
+  try {
+    const raw = window.localStorage.getItem(SAVED)
+    if (!raw) return null
+    const { at, weather } = JSON.parse(raw) as { at: number; weather: Weather }
+    return Date.now() - at < SAVED_MAX_MS ? { ...weather, savedAt: at, source: `${weather.source}, saved` } : null
+  } catch {
+    return null
+  }
+}
+
+function save(weather: Weather) {
+  try {
+    window.localStorage.setItem(SAVED, JSON.stringify({ at: Date.now(), weather }))
+  } catch {
+    // Storage blocked: offline simply shows no rain data.
+  }
+}
 
 /** Demo: the scripted storm. Live: Open-Meteo now and every ten minutes. */
 export function useWeather(mode: AppMode): WeatherState {
@@ -37,9 +61,14 @@ export function useWeather(mode: AppMode): WeatherState {
       controller?.abort()
       controller = new AbortController()
       fetchLiveWeather(controller.signal)
-        .then((weather: Weather) => setState({ status: 'ready', weather }))
+        .then((weather: Weather) => {
+          save(weather)
+          setState({ status: 'ready', weather })
+        })
         .catch((error: Error) => {
-          if (error.name !== 'AbortError') setState((s) => (s.status === 'ready' ? s : { status: 'error' }))
+          if (error.name === 'AbortError') return
+          const saved = loadSaved()
+          setState((s) => (s.status === 'ready' ? s : saved ? { status: 'ready', weather: saved } : { status: 'error' }))
         })
     }
     load()

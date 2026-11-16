@@ -594,6 +594,46 @@ body::after {
   transform-origin: left;
 }
 
+/* Flood replay timeline: a hairline track with a square hazard-red handle */
+.replay-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 24px;
+  background: transparent;
+  cursor: pointer;
+}
+.replay-range::-webkit-slider-runnable-track {
+  height: 2px;
+  background: rgba(255, 255, 255, 0.25);
+}
+.replay-range::-moz-range-track {
+  height: 2px;
+  background: rgba(255, 255, 255, 0.25);
+}
+.replay-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 22px;
+  margin-top: -10px;
+  background: #e8301c;
+  border: 2px solid #0a0a0b;
+}
+.replay-range::-moz-range-thumb {
+  width: 14px;
+  height: 22px;
+  border: 2px solid #0a0a0b;
+  border-radius: 0;
+  background: #e8301c;
+}
+.replay-range:focus-visible {
+  outline: 2px solid #e8301c;
+  outline-offset: 2px;
+}
+.replay-range:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
 /* Phone menu: a panel slides in from the right over a dimmed page. Transitions (not keyframes),
    so a quick open-close reverses smoothly from wherever it is. */
 .ln-menu {

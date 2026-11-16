@@ -38,6 +38,36 @@ export function markAsked(id: string) {
   write(ASKED, Object.fromEntries(asked))
 }
 
+// ── Your reports: how often other riders confirmed what this phone reported ──
+// Reports leave the shared map after 24 hours, so the highest confirmation count seen for each
+// of this phone's reports is kept here, and the total keeps growing over the season.
+const SEEN = 'phnomflood.mine.confirmed'
+const seen = new Map<string, number>(Object.entries(read<Record<string, number>>(SEEN, {})))
+
+export interface Impact {
+  /** Floods this phone reported */
+  reports: number
+  /** Times other riders confirmed them as still flooded */
+  confirmations: number
+}
+
+/** Fold in the latest counts from the shared reports, and return the running totals. */
+export function updateImpact(current: { id: string; confirmations?: number }[]): Impact {
+  let changed = false
+  for (const r of current) {
+    if (!mine.has(r.id)) continue
+    const n = r.confirmations ?? 0
+    if (n > (seen.get(r.id) ?? 0)) {
+      seen.set(r.id, n)
+      changed = true
+    }
+  }
+  if (changed) write(SEEN, Object.fromEntries(seen))
+  let confirmations = 0
+  for (const n of seen.values()) confirmations += n
+  return { reports: mine.size, confirmations }
+}
+
 /** Can this phone ask about this report now? */
 export function canAsk(id: string) {
   if (mine.has(id)) return false

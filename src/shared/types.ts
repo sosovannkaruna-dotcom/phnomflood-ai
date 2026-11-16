@@ -39,6 +39,10 @@ export interface FloodApi {
   mode: 'demo' | 'live'
   /** local: this device only · connecting · live: shared · offline: shared but unreachable */
   sync: SyncState
+  /** Live: reports, confirmations and clears made offline, waiting to be sent */
+  pending: number
+  /** Live: when the reports on screen were saved, while the server has not answered yet */
+  savedAt: number | null
   reports: FloodReport[]
   queue: Ticket[]
   ridersRerouted: number

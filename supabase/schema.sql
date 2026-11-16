@@ -112,3 +112,51 @@ $$;
 
 revoke all on function public.flood_hotspots(integer) from public;
 grant execute on function public.flood_hotspots(integer) to anon;
+
+-- Flood history for the replay and the drain watch on the Open data page: the reports of the
+-- last 1-90 days with the same public fields as the open data feed (no photos, no internal
+-- fields). Demo and tour test reports ("s-") are left out.
+create or replace function public.flood_history(p_days integer default 7)
+returns table (
+  id text,
+  lat double precision,
+  lng double precision,
+  place text,
+  area text,
+  sangkat text,
+  khan text,
+  depth text,
+  depth_cm integer,
+  depth_source text,
+  drain_blocked boolean,
+  confirmations integer,
+  reported_at timestamptz,
+  updated_at timestamptz,
+  cleared_at timestamptz
+)
+language sql stable security definer set search_path = public as $$
+  select r.id,
+         round(r.lat::numeric, 6)::double precision,
+         round(r.lng::numeric, 6)::double precision,
+         r.name,
+         r.area,
+         nullif(r.sangkat, ''),
+         nullif(r.khan, ''),
+         r.depth,
+         coalesce(round((r.ai ->> 'depthCm')::numeric)::integer,
+                  case r.depth when 'ankle' then 10 when 'knee' then 25 else 40 end),
+         case when (r.ai ->> 'depthCm') is not null then 'photo_ai' else 'rider' end,
+         case when r.ai is not null then coalesce((r.ai -> 'drainage' ->> 'blocked')::boolean, false) end,
+         r.confirmations,
+         r.created_at,
+         r.updated_at,
+         r.cleared_at
+    from public.flood_reports r
+   where r.created_at > now() - make_interval(days => least(greatest(coalesce(p_days, 7), 1), 90))
+     and r.id not like 's-%'
+   order by r.created_at
+   limit 5000;
+$$;
+
+revoke all on function public.flood_history(integer) from public;
+grant execute on function public.flood_history(integer) to anon;

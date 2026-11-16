@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
-import { Crosshair as LocateFixed, Minus, NavigationArrow, Plus, SpeakerHigh as Volume2, SpeakerX as VolumeX } from '@phosphor-icons/react'
+import { CloudRain, Crosshair as LocateFixed, Minus, NavigationArrow, Plus, SpeakerHigh as Volume2, SpeakerX as VolumeX } from '@phosphor-icons/react'
 import RiderMap, { type RiderMapHandle } from './components/RiderMap'
 import TopHud from './components/TopHud'
 import BottomSheet from './components/BottomSheet'
@@ -17,7 +17,7 @@ import { drainText } from './lib/format'
 import FloodCard from './components/FloodCard'
 import TourOverlay from './components/TourOverlay'
 import StillThere, { type StillAnswer } from './components/StillThere'
-import { canAsk, markAsked, markMine } from './lib/asked'
+import { canAsk, markAsked, markMine, updateImpact } from './lib/asked'
 import { useBriefing } from '../services/briefing'
 import { useHotspots } from './hooks/useHotspots'
 import { distanceToPath } from '../lib/geo'
@@ -72,7 +72,7 @@ const TOUR_STEPS = 5
 function Rider({ onHome, tour = false }: { onHome: () => void; tour?: boolean }) {
   const { t, lang } = useT()
   const appMode = useMode()
-  const { reports, sync, addReport, addRerouted, confirmReport, clearReport } = useFlood()
+  const { reports, sync, pending, savedAt, addReport, addRerouted, confirmReport, clearReport } = useFlood()
   const { ride, setRide, start: startRide, stop } = useRide()
   const riding = ride.status === 'riding'
   const live = appMode === 'live'
@@ -94,6 +94,13 @@ function Rider({ onHome, tour = false }: { onHome: () => void; tour?: boolean })
   const hotspotState = useHotspots(live)
   const [spotsOn, setSpotsOn] = useState(false)
   const heavyRain = weather.status === 'ready' && weather.weather.heavy
+  // Live: what this phone's reports have done (confirmations by other riders), kept across visits.
+  const impact = useMemo(() => (live ? updateImpact(reports) : null), [live, reports])
+
+  // Live: the rain radar, on by itself in heavy rain until the rider switches it.
+  const [radarChoice, setRadarChoice] = useState<boolean | null>(null)
+  const radarOn = live && (radarChoice ?? heavyRain)
+  const [radarTime, setRadarTime] = useState<number | null>(null)
   const spotsShown = live && hotspotState.status === 'ready' && (heavyRain || spotsOn) ? hotspotState.spots : []
   const briefing = useBriefing(lang, live, `${reports.length}:${reports.reduce((s, r) => s + (r.confirmations ?? 0), 0)}`)
   const rainNow = weather.status === 'ready' ? weather.weather.rainNow : 0
@@ -427,6 +434,8 @@ function Rider({ onHome, tour = false }: { onHome: () => void; tour?: boolean })
         floodAt={waterKind}
         onFloodTap={setSelectedId}
         hotspots={spotsShown}
+        radar={radarOn}
+        onRadarFrame={setRadarTime}
       />
 
       {/* Riding through water: the screen edge pulses in the flood's colour */}
@@ -435,7 +444,8 @@ function Rider({ onHome, tour = false }: { onHome: () => void; tour?: boolean })
       <TopHud trip={trip} place={place} mode={appMode} sync={sync} weather={weather} riding={riding && !live} navigating={navigating} planning={planning} alert={alert} quiet={ride.status === 'arrived'} speedFactor={speedFactor} onHome={onHome} />
 
       {/* Right-edge map controls, in thumb reach just above the sheet */}
-      <div className="rd-controls cc-panel absolute right-3 z-10 flex flex-col divide-y divide-white/[0.12]">
+      {/* Sits just above whichever bottom panel is open, at its real height (the sheet grows with notes and the briefing) */}
+      <div className="rd-controls cc-panel absolute right-3 z-10 flex flex-col divide-y divide-white/[0.12]" style={{ bottom: panelH + 8 }}>
         {!navigating && (
           <>
             <button
@@ -456,10 +466,24 @@ function Rider({ onHome, tour = false }: { onHome: () => void; tour?: boolean })
             </button>
           </>
         )}
+        {live && (
+          <button onClick={() => setRadarChoice(!radarOn)} aria-pressed={radarOn} aria-label={radarOn ? t('radar.hide') : t('radar.show')} className={control}>
+            <CloudRain weight={radarOn ? 'fill' : 'bold'} className={`h-5 w-5 ${radarOn ? 'text-water' : ''}`} />
+          </button>
+        )}
         <button onClick={() => setMuted((m) => !m)} aria-pressed={muted} aria-label={muted ? t('controls.unmute') : t('controls.mute')} className={control}>
           {muted ? <VolumeX className="h-5 w-5 text-zinc-500" /> : <Volume2 className="h-5 w-5" />}
         </button>
       </div>
+
+      {/* Rain radar caption: which frame is showing, and what it can and cannot show */}
+      {radarOn && !navigating && (
+        <p className="pointer-events-none absolute left-3 z-10 max-w-[60%] border border-white/[0.12] bg-void/85 px-2 py-1 text-[11px] leading-snug text-zinc-300" style={{ bottom: panelH + 8 }}>
+          {radarTime
+            ? t('radar.caption', { time: new Intl.DateTimeFormat(lang === 'km' ? 'km-KH' : 'en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Phnom_Penh' }).format(radarTime * 1000) })
+            : t('radar.loading')}
+        </p>
+      )}
 
       {/* Dragged away while navigating: one tap brings the camera back behind the rider */}
       {mapNav && panned && (
@@ -489,6 +513,8 @@ function Rider({ onHome, tour = false }: { onHome: () => void; tour?: boolean })
         rainNow={rainNow}
         forecast={weather.status === 'ready' ? weather.weather.series : undefined}
         briefing={live ? briefing : undefined}
+        impact={impact}
+        offline={live ? { savedAt, pending } : undefined}
         spots={live ? { state: hotspotState, shown: spotsShown.length, auto: heavyRain, manual: spotsOn, toggle: () => setSpotsOn((v) => !v) } : undefined}
         live={
           live

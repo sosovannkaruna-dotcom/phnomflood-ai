@@ -1,6 +1,70 @@
-import { useEffect, useState } from 'react'
+import { Suspense, lazy, useEffect, useState } from 'react'
 import { ArrowLeft, ArrowsClockwise, Copy, DownloadSimple, Check, Sparkle } from '@phosphor-icons/react'
 import { minutesSince, useBriefing } from '../services/briefing'
+import type { HistoryReport } from './FloodReplay'
+
+// The replay map loads after the page (MapLibre is large).
+const FloodReplay = lazy(() => import('./FloodReplay'))
+
+/** Blocked-drain watch: where the photo check saw debris blocking a drain, for drainage crews. */
+function DrainWatch() {
+  const [state, setState] = useState<{ status: 'loading' } | { status: 'ready'; reports: HistoryReport[]; days: number } | { status: 'error' }>({ status: 'loading' })
+  useEffect(() => {
+    fetch('/api/history?days=30&drain=blocked')
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((json: { reports: HistoryReport[]; window_days: number }) => setState({ status: 'ready', reports: [...json.reports].reverse(), days: json.window_days }))
+      .catch(() => setState({ status: 'error' }))
+  }, [])
+  const when = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Phnom_Penh' })
+  // Several photos of one drain count once: group by place and Khan.
+  const spots = state.status === 'ready'
+    ? Object.values(
+        state.reports.reduce<Record<string, { r: HistoryReport; n: number }>>((acc, r) => {
+          const key = `${r.place}|${r.khan ?? ''}`
+          acc[key] = acc[key] ? { r: acc[key].r, n: acc[key].n + 1 } : { r, n: 1 }
+          return acc
+        }, {}),
+      )
+    : []
+  return (
+    <section aria-label="Blocked-drain watch" className="mt-20">
+      <div className="flex flex-wrap items-baseline justify-between gap-4">
+        <h2 className="font-display text-2xl">Blocked-drain watch</h2>
+        <a href="/api/history?days=30&drain=blocked&format=csv" className="flex items-center gap-1.5 text-sm text-zinc-400 transition-colors duration-150 hover:text-zinc-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-signal">
+          <DownloadSimple weight="bold" className="h-4 w-4" /> CSV for drainage crews
+        </a>
+      </div>
+      <p className="mt-2 max-w-[62ch] text-sm leading-relaxed text-zinc-400">
+        When a rider adds a photo, the AI check also looks for debris blocking a drain grate. Every spot where it saw one in the last 30 days is listed here, so crews know where to clear first.
+      </p>
+      <div className="mt-6 border border-white/15">
+        {state.status === 'loading' && <div className="cc-shimmer h-20" />}
+        {state.status === 'error' && <p className="p-5 text-sm text-flare">The drain list could not be loaded. Try again in a moment.</p>}
+        {state.status === 'ready' && spots.length === 0 && (
+          <p className="p-5 text-sm leading-relaxed text-zinc-400">
+            No blocked drains spotted in the last {state.days === 1 ? '24 hours' : `${state.days} days`}. When a photo check sees debris blocking a drain, the spot appears here.
+          </p>
+        )}
+        {spots.length > 0 && (
+          <ul className="divide-y divide-white/10">
+            {spots.map(({ r, n }) => (
+              <li key={r.id} className="grid grid-cols-1 gap-1 px-5 py-3 text-sm sm:grid-cols-[1fr_auto_auto] sm:items-baseline sm:gap-6">
+                <span className="min-w-0 truncate text-zinc-100">
+                  {r.place}
+                  {r.khan ? <span className="text-zinc-500"> · {r.sangkat ? `${r.sangkat}, ` : ''}{r.khan}</span> : null}
+                </span>
+                <span className="font-mono text-xs text-zinc-400">
+                  {n > 1 ? `${n} photos · ` : ''}~{r.depth_cm} cm water
+                </span>
+                <span className="font-mono text-xs text-zinc-500">{when.format(Date.parse(r.reported_at))}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </section>
+  )
+}
 import { DEPTHS } from '../lib/severity'
 
 // The Open data page (#/data): PhnomFlood's live flood reports as a public feed anyone can use.
@@ -40,6 +104,7 @@ const PARAMS: [string, string][] = [
   ['format', 'geojson (default), csv or json'],
   ['hours', '1 to 24: how far back to look (default 24)'],
   ['include', 'cleared: also list reports marked as drained'],
+  ['drain', 'blocked: only reports whose photo showed a blocked drain'],
 ]
 
 const ago = (iso: string) => {
@@ -188,6 +253,21 @@ export default function OpenData({ onHome }: { onHome: () => void }) {
           </section>
         )}
 
+        {/* Flood replay */}
+        <section aria-label="Flood replay" className="mt-20">
+          <h2 className="font-display text-2xl">Flood replay</h2>
+          <p className="mt-2 max-w-[62ch] text-sm leading-relaxed text-zinc-400">
+            Play back the last days of reports: each flood appears when a rider reported it and leaves when riders cleared it, or after 24 hours. The red bars show when the reports came in.
+          </p>
+          <div className="mt-6">
+            <Suspense fallback={<div className="cc-shimmer h-[560px] border border-white/15" />}>
+              <FloodReplay />
+            </Suspense>
+          </div>
+        </section>
+
+        <DrainWatch />
+
         {/* Downloads */}
         <section aria-label="Download" className="mt-20">
           <h2 className="font-display text-2xl">Download</h2>
@@ -224,6 +304,13 @@ export default function OpenData({ onHome }: { onHome: () => void }) {
             <p className="tl-label mt-6">Example</p>
             <div className="mt-2">
               <CopyLine text={`curl "${origin}${ENDPOINT}?format=csv&hours=6"`} />
+            </div>
+            <p className="tl-label mt-8">History</p>
+            <p className="mt-2 max-w-[44ch] text-sm leading-relaxed text-zinc-400">
+              Up to 90 days of past reports, each with status active, cleared or expired. Takes <span className="font-mono text-zinc-200">days</span> (1 to 90), <span className="font-mono text-zinc-200">format</span> (json or csv) and <span className="font-mono text-zinc-200">drain</span>.
+            </p>
+            <div className="mt-3">
+              <CopyLine text={`${origin}/api/history?days=30`} />
             </div>
           </div>
           <div className="lg:col-span-7">

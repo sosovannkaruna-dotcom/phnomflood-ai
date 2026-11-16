@@ -16,6 +16,7 @@ import type { RainSlot } from '../hooks/useWeather'
 import BriefingCard from './BriefingCard'
 import type { BriefingState } from '../../services/briefing'
 import type { HotspotState } from '../hooks/useHotspots'
+import type { Impact } from '../lib/asked'
 
 const VEHICLES: { id: VehicleId; Icon: typeof Bike }[] = [
   { id: 'moto', Icon: Bike },
@@ -42,6 +43,10 @@ interface Props {
   forecast?: RainSlot[]
   /** Live: the AI city flood briefing */
   briefing?: BriefingState
+  /** Live: offline state (reports saved on the phone, actions waiting to be sent) */
+  offline?: { savedAt: number | null; pending: number }
+  /** Live: this phone's reports and how often other riders confirmed them */
+  impact?: Impact | null
   /** Live: flood-prone spots (predicted from report history) */
   spots?: { state: HotspotState; shown: number; auto: boolean; manual: boolean; toggle: () => void }
   /** Live mode: search any place instead of the demo's trip list */
@@ -57,7 +62,7 @@ interface Props {
 }
 
 /** Two-detent sheet: riding view when collapsed, route comparison and nearby alerts when expanded. */
-export default function BottomSheet({ trip, reports, position, mode, sync, ride, onStartRide, onStopRide, onReport, onConfirm, onClear, live, rainNow = 0, forecast, briefing, spots }: Props) {
+export default function BottomSheet({ trip, reports, position, mode, sync, ride, onStartRide, onStopRide, onReport, onConfirm, onClear, live, rainNow = 0, forecast, briefing, spots, impact, offline }: Props) {
   const { t, lang } = useT()
   const [expanded, setExpanded] = useState(false)
   const [searching, setSearching] = useState(false)
@@ -310,6 +315,19 @@ export default function BottomSheet({ trip, reports, position, mode, sync, ride,
                 </button>
               </div>
               {live && briefing && <BriefingCard state={briefing} />}
+              {live && impact && (
+                <section aria-label={t('impact.title')} className="tl-grid grid-cols-2 border border-white/[0.12]">
+                  <div className="p-3">
+                    <p className="tl-label">{t('impact.reports')}</p>
+                    <p className="mt-1 font-mono text-2xl text-zinc-50">{impact.reports}</p>
+                  </div>
+                  <div className="p-3">
+                    <p className="tl-label">{t('impact.confirmed')}</p>
+                    <p className={`mt-1 font-mono text-2xl ${impact.confirmations ? 'text-emerald-400' : 'text-zinc-50'}`}>{impact.confirmations}</p>
+                  </div>
+                  <p className="col-span-2 px-3 py-2 text-xs leading-snug text-zinc-400">{impact.reports ? t('impact.note', { n: impact.confirmations }) : t('impact.empty')}</p>
+                </section>
+              )}
               {hasRoute && (
                 <section>
                   <h3 className="tl-label pb-2">{t('sheet.directions')}</h3>
@@ -373,6 +391,8 @@ export default function BottomSheet({ trip, reports, position, mode, sync, ride,
                   <h3 className="tl-label">{t('sheet.nearby')}</h3>
                 </div>
                 <p className={`mb-2 text-xs ${mode === 'live' && sync === 'live' ? 'text-emerald-400' : 'text-zinc-400'}`}>{t(syncKey)}</p>
+                {offline?.savedAt && <p className="mb-2 text-xs text-amber-400">{t('offline.saved', { time: new Intl.DateTimeFormat(lang === 'km' ? 'km-KH' : 'en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Phnom_Penh' }).format(offline.savedAt) })}</p>}
+                {offline && offline.pending > 0 && <p className="mb-2 text-xs text-amber-400">{t('offline.pending', { n: offline.pending })}</p>}
                 {nearby.length === 0 && <p className="text-sm text-zinc-400">{t('sheet.none')}</p>}
                 <ul className="tl-grid border border-white/[0.12] empty:hidden">
                   {nearby.map(({ report, metres }) => {

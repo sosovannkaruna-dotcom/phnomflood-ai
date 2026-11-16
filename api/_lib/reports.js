@@ -28,6 +28,26 @@ export async function fetchReports({ hours = 24, includeCleared = false, signal 
   return (await res.json()).map(toOpen)
 }
 
+/**
+ * Reports from the last `days` (1-90), oldest first, through the flood_history function.
+ * Returns null when that function has not been set up yet (supabase/schema.sql).
+ */
+export async function fetchHistory({ days = 7, signal } = {}) {
+  const res = await fetch(`${BASE}/rest/v1/rpc/flood_history`, {
+    method: 'POST',
+    headers: { apikey: KEY, Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ p_days: Math.min(90, Math.max(1, Math.round(days))) }),
+    signal: signal ?? AbortSignal.timeout(10000),
+  })
+  if (res.status === 404) return null
+  if (!res.ok) throw new Error(`supabase ${res.status}`)
+  // Same shape as the live feed; a report leaves the map when cleared or after 24 hours.
+  return (await res.json()).map((r) => ({
+    ...r,
+    status: r.cleared_at ? 'cleared' : Date.now() - Date.parse(r.reported_at) > 24 * 3600 * 1000 ? 'expired' : 'active',
+  }))
+}
+
 function toOpen(row) {
   const aiCm = Number(row.ai?.depthCm)
   const verified = Number.isFinite(aiCm) && aiCm > 0

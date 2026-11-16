@@ -8,6 +8,31 @@ import { SEED_REPORTS, SEED_QUEUE, BASE_RIDERS_REROUTED, SEED_VERSION } from '..
 import { clearState, loadState, saveState } from '../services/api'
 import { clearRemote, confirmRemote, fetchChanges, insertReport, syncConfigured } from '../services/sync'
 import { connectRealtime } from '../services/realtime'
+import { enqueue, flush, onPendingChange, pendingCount } from '../services/outbox'
+
+// Live: the last reports seen, kept on the phone so the map still shows them without signal.
+const SNAPSHOT = 'phnomflood.live.snapshot'
+const DAY_MS = 24 * 3600 * 1000
+
+function loadSnapshot() {
+  try {
+    const raw = window.localStorage.getItem(SNAPSHOT)
+    if (!raw) return null
+    const snap = JSON.parse(raw)
+    const reports = (snap.reports ?? []).filter((r) => Date.now() - r.createdAt < DAY_MS)
+    return reports.length ? { at: snap.at, reports } : null
+  } catch {
+    return null
+  }
+}
+
+function saveSnapshot(reports) {
+  try {
+    window.localStorage.setItem(SNAPSHOT, JSON.stringify({ at: Date.now(), reports: reports.map(({ photo, isNew, ...r }) => r) }))
+  } catch {
+    // Storage full or blocked: offline just shows an empty map.
+  }
+}
 import { DEPTHS } from '../lib/severity'
 
 const FloodContext = createContext(null)
@@ -28,8 +53,12 @@ function freshState(mode) {
 }
 
 function initialState(mode) {
-  // With shared sync on, the server is the source of truth: start empty and load from it.
-  if (mode === 'live' && syncConfigured) return freshState('live')
+  // With shared sync on, the server is the source of truth: start from the last reports this phone
+  // saw (so a phone with no signal still shows them), then load the truth from the server.
+  if (mode === 'live' && syncConfigured) {
+    const snap = loadSnapshot()
+    return { ...freshState('live'), reports: snap?.reports ?? [], savedAt: snap?.at ?? null }
+  }
   const saved = loadState(mode)
   if (mode === 'demo' && saved?.reports?.length && saved?.queue && saved?.seedVersion === SEED_VERSION) return { ...freshState(mode), ...saved }
   if (mode === 'live' && saved?.reports) return { ...freshState(mode), ...saved }
@@ -98,6 +127,8 @@ function reducer(state, action) {
       return { ...state, reports: state.reports.map((r) => (r.id === action.id ? { ...r, confirmations: (r.confirmations ?? 0) + 1, createdAt: Date.now() } : r)) }
     case 'CLEAR_REPORT':
       return { ...state, reports: state.reports.filter((r) => r.id !== action.id) }
+    case 'LIVE':
+      return state.savedAt ? { ...state, savedAt: null } : state
     case 'ADD_REROUTED':
       return { ...state, ridersRerouted: state.ridersRerouted + action.count }
     case 'RESET':
@@ -113,6 +144,13 @@ export function FloodProvider({ mode = 'demo', children }) {
   // local: this device only · connecting · live: shared and healthy · offline: shared but unreachable
   const [sync, setSync] = useState(shared ? 'connecting' : 'local')
   const cursor = useRef(new Date(Date.now() - 24 * 3600 * 1000).toISOString())
+  const [pending, setPending] = useState(pendingCount)
+  useEffect(() => onPendingChange(setPending), [])
+
+  // Live: keep the latest reports on the phone for the next time there is no signal.
+  useEffect(() => {
+    if (shared && !state.savedAt) saveSnapshot(state.reports)
+  }, [shared, state.reports, state.savedAt])
 
   // Persist (not when the server is the source of truth).
   useEffect(() => {
@@ -151,6 +189,9 @@ export function FloodProvider({ mode = 'demo', children }) {
           }
           first = false
           setSync('live')
+          dispatch({ type: 'LIVE' })
+          // Back in reach: send anything made while offline.
+          void flush()
         } catch (error) {
           if (error.name !== 'AbortError') setSync('offline')
         }
@@ -165,15 +206,17 @@ export function FloodProvider({ mode = 'demo', children }) {
         pushed = true
       },
     })
-    // Back to the tab: catch up at once.
+    // Back to the tab, or back online: catch up at once.
     const onVisible = () => document.visibilityState === 'visible' && void tick()
     document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('online', onVisible)
     return () => {
       stopped = true
       window.clearTimeout(timer)
       controller?.abort()
       disconnect()
       document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('online', onVisible)
     }
   }, [shared])
 
@@ -182,26 +225,40 @@ export function FloodProvider({ mode = 'demo', children }) {
       ...state,
       mode,
       sync,
+      pending,
+      savedAt: state.savedAt ?? null,
       addReport: (report) => {
         dispatch({ type: 'ADD_REPORT', report })
-        if (shared) insertReport(report).catch(() => setSync('offline'))
+        if (shared)
+          insertReport(report).catch((error) => {
+            setSync('offline')
+            if (!error?.status || error.status >= 500) enqueue('insert', report.id, report)
+          })
       },
       dispatchCrew: (id) => dispatch({ type: 'DISPATCH_CREW', id }),
       addRerouted: (count) => dispatch({ type: 'ADD_REROUTED', count }),
       confirmReport: (id) => {
         dispatch({ type: 'CONFIRM_REPORT', id })
-        if (shared) confirmRemote(id).catch(() => setSync('offline'))
+        if (shared)
+          confirmRemote(id).catch((error) => {
+            setSync('offline')
+            if (!error?.status || error.status >= 500) enqueue('confirm', id)
+          })
       },
       clearReport: (id) => {
         dispatch({ type: 'CLEAR_REPORT', id })
-        if (shared) clearRemote(id).catch(() => setSync('offline'))
+        if (shared)
+          clearRemote(id).catch((error) => {
+            setSync('offline')
+            if (!error?.status || error.status >= 500) enqueue('clear', id)
+          })
       },
       resetDemo: () => {
         clearState(mode)
         dispatch({ type: 'RESET', mode })
       },
     }),
-    [state, mode, sync, shared],
+    [state, mode, sync, shared, pending],
   )
 
   return <FloodContext.Provider value={value}>{children}</FloodContext.Provider>
