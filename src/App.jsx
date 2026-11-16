@@ -71,7 +71,10 @@ export default function App() {
   const show = useCallback(async (next, { instant = false } = {}) => {
     const from = current.current
     if (next === from) return
+    let committed = false
     const commit = () => {
+      if (committed) return
+      committed = true
       flushSync(() => setRoute(next))
       window.scrollTo(0, 0)
     }
@@ -89,7 +92,18 @@ export default function App() {
       commit()
       nameStage(morph)
     })
+    // A browser that is not drawing frames (a background tab or window) never takes the "before"
+    // picture, so the transition would wait forever. If the page has not switched in 600 ms, switch
+    // it without the animation.
+    const fallback = window.setTimeout(() => {
+      if (committed) return
+      commit()
+      transition.skipTransition()
+      delete root.dataset.nav
+      busy.current = false
+    }, 600)
     transition.finished.finally(() => {
+      window.clearTimeout(fallback)
       delete root.dataset.nav
       busy.current = false
     })
