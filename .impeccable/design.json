@@ -1,0 +1,514 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-16T13:17:24+00:00",
+  "title": "Design System: PhnomFlood AI",
+  "extensions": {
+    "colorMeta": {
+      "hazard-red": {
+        "role": "primary",
+        "displayName": "Hazard Red",
+        "canonical": "oklch(60.5% 0.221 30.4)",
+        "tonalRamp": [
+          "#2B0000",
+          "#560000",
+          "#840000",
+          "#B51402",
+          "#E9321E",
+          "#FF6C56",
+          "#FF9D87",
+          "#FFCBB7"
+        ]
+      },
+      "hazard-red-hover": {
+        "role": "primary",
+        "displayName": "Hazard Red (hover)",
+        "canonical": "oklch(62.7% 0.220 30.4)",
+        "tonalRamp": [
+          "#290000",
+          "#540000",
+          "#820000",
+          "#B31B0B",
+          "#E73622",
+          "#FF6A54",
+          "#FF9B85",
+          "#FFCAB5"
+        ]
+      },
+      "flare": {
+        "role": "primary",
+        "displayName": "Flare",
+        "canonical": "oklch(70.7% 0.186 30.4)",
+        "tonalRamp": [
+          "#210000",
+          "#490904",
+          "#742117",
+          "#A2392B",
+          "#D35341",
+          "#FF705B",
+          "#FF9E89",
+          "#FFCBB7"
+        ]
+      },
+      "dusk": {
+        "role": "secondary",
+        "displayName": "Dusk",
+        "canonical": "oklch(70.6% 0.090 286.8)",
+        "tonalRamp": [
+          "#0A0819",
+          "#24213A",
+          "#403D5F",
+          "#5E5B86",
+          "#7F7BB0",
+          "#A19DDA",
+          "#C5C2FA",
+          "#EBE9FF"
+        ]
+      },
+      "dusk-mid": {
+        "role": "secondary",
+        "displayName": "Dusk Mid",
+        "canonical": "oklch(50.7% 0.118 283.1)",
+        "tonalRamp": [
+          "#090427",
+          "#211C4D",
+          "#3C3875",
+          "#5956A1",
+          "#7A79BF",
+          "#9D9EDC",
+          "#C2C4F9",
+          "#E8EAFF"
+        ]
+      },
+      "dusk-deep": {
+        "role": "secondary",
+        "displayName": "Dusk Deep",
+        "canonical": "oklch(19.5% 0.040 284.4)",
+        "tonalRamp": [
+          "#0A081A",
+          "#232336",
+          "#404053",
+          "#5F5F70",
+          "#80818F",
+          "#A3A4AF",
+          "#C8C8D1",
+          "#EEEEF3"
+        ]
+      },
+      "void": {
+        "role": "neutral",
+        "displayName": "Void",
+        "canonical": "oklch(14.5% 0.002 286.1)",
+        "tonalRamp": [
+          "#0B0B0C",
+          "#252526",
+          "#424243",
+          "#616162",
+          "#828283",
+          "#A5A5A5",
+          "#C9C9C9",
+          "#EEEEEF"
+        ]
+      },
+      "slab": {
+        "role": "neutral",
+        "displayName": "Slab",
+        "canonical": "oklch(17.9% 0.004 286.0)",
+        "tonalRamp": [
+          "#0B0B0D",
+          "#252527",
+          "#424244",
+          "#616163",
+          "#828283",
+          "#A5A5A6",
+          "#C9C9CA",
+          "#EEEEEF"
+        ]
+      },
+      "panel": {
+        "role": "neutral",
+        "displayName": "Panel",
+        "canonical": "oklch(16.5% 0.004 285.9)",
+        "tonalRamp": [
+          "#0B0B0D",
+          "#252527",
+          "#424244",
+          "#616163",
+          "#828283",
+          "#A5A5A6",
+          "#C9C9CA",
+          "#EEEEEF"
+        ]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Paper",
+        "canonical": "oklch(96.7% 0.001 286.4)",
+        "tonalRamp": [
+          "#0B0B0B",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828283",
+          "#A5A5A5",
+          "#C9C9CA",
+          "#EEEEEF"
+        ]
+      },
+      "ash": {
+        "role": "neutral",
+        "displayName": "Ash",
+        "canonical": "oklch(71.2% 0.013 286.1)",
+        "tonalRamp": [
+          "#0B0B0D",
+          "#252528",
+          "#414146",
+          "#606067",
+          "#818189",
+          "#A4A4AD",
+          "#C8C8D0",
+          "#EEEEF5"
+        ]
+      },
+      "smoke": {
+        "role": "neutral",
+        "displayName": "Smoke",
+        "canonical": "oklch(55.2% 0.014 285.9)",
+        "tonalRamp": [
+          "#0B0B0E",
+          "#24242A",
+          "#414148",
+          "#606068",
+          "#81818A",
+          "#A4A4AC",
+          "#C8C8CF",
+          "#EEEEF4"
+        ]
+      },
+      "clear": {
+        "role": "semantic",
+        "displayName": "Clear",
+        "canonical": "oklch(69.6% 0.149 162.5)",
+        "tonalRamp": [
+          "#001204",
+          "#003019",
+          "#005132",
+          "#00754D",
+          "#009A6A",
+          "#2EC18A",
+          "#74E3B1",
+          "#AAFFD9"
+        ]
+      },
+      "caution": {
+        "role": "semantic",
+        "displayName": "Caution",
+        "canonical": "oklch(76.9% 0.165 70.1)",
+        "tonalRamp": [
+          "#180600",
+          "#3A1D00",
+          "#613700",
+          "#895300",
+          "#B57100",
+          "#E29101",
+          "#FFB64A",
+          "#FFDF88"
+        ]
+      },
+      "danger": {
+        "role": "semantic",
+        "displayName": "Danger",
+        "canonical": "oklch(63.7% 0.208 25.3)",
+        "tonalRamp": [
+          "#270000",
+          "#510000",
+          "#7F0712",
+          "#AF2428",
+          "#E13D3E",
+          "#FF6C65",
+          "#FF9C92",
+          "#FFCAC0"
+        ]
+      },
+      "water": {
+        "role": "semantic",
+        "displayName": "Water",
+        "canonical": "oklch(75.4% 0.139 232.7)",
+        "tonalRamp": [
+          "#000D1B",
+          "#00293E",
+          "#004866",
+          "#096A90",
+          "#1F8DBC",
+          "#32B2EB",
+          "#69D7FF",
+          "#A1FCFF"
+        ]
+      },
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "rgba(255, 255, 255, 0.12)",
+        "tonalRamp": [
+          "rgba(255, 255, 255, 0.04)",
+          "rgba(255, 255, 255, 0.07)",
+          "rgba(255, 255, 255, 0.08)",
+          "rgba(255, 255, 255, 0.12)",
+          "rgba(255, 255, 255, 0.15)",
+          "rgba(255, 255, 255, 0.16)",
+          "rgba(255, 255, 255, 0.25)",
+          "rgba(255, 255, 255, 0.3)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Landing hero and closing headline only."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Landing section heads, 14–22ch lines."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Titles inside the app: sheets, cards, arrival card."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Landing paragraphs at 36–58ch."
+      },
+      "body-ui": {
+        "displayName": "Body UI",
+        "purpose": "Button labels, list rows, street names."
+      },
+      "label": {
+        "displayName": "Mono Label",
+        "purpose": "Every caption, unit, column head and source; uppercase in English, not in Khmer."
+      },
+      "numeric": {
+        "displayName": "Numeric",
+        "purpose": "Every number, with tabular figures."
+      }
+    },
+    "shadows": [
+      {
+        "name": "pin-lift",
+        "value": "drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6))",
+        "purpose": "Trip start and destination pins only."
+      },
+      {
+        "name": "flood-glow",
+        "value": "drop-shadow(0 0 10px var(--flood)) drop-shadow(0 0 22px var(--flood))",
+        "purpose": "Rider puck while in water; pulses at 900ms."
+      },
+      {
+        "name": "flood-edge",
+        "value": "inset 0 0 70px 6px var(--flood)",
+        "purpose": "Screen-edge flash while in water; pulses at 900ms."
+      },
+      {
+        "name": "panel-blur",
+        "value": "backdrop-filter: blur(8px)",
+        "purpose": "Floating panels over the map; removed under reduced transparency."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-punch",
+        "value": "cubic-bezier(0.23, 1, 0.32, 1)",
+        "purpose": "Default: instant start, long settle. Presses, hovers, fades."
+      },
+      {
+        "name": "ease-drawer",
+        "value": "cubic-bezier(0.32, 0.72, 0, 1)",
+        "purpose": "Bottom sheet and drawers (260ms slide-up)."
+      },
+      {
+        "name": "ease-toast",
+        "value": "cubic-bezier(0.34, 1.56, 0.64, 1)",
+        "purpose": "Toast drop-in with slight overshoot (420ms)."
+      },
+      {
+        "name": "press",
+        "value": "120ms scale(0.97)",
+        "purpose": "Every field control on press."
+      },
+      {
+        "name": "fade-in",
+        "value": "180ms ease-out",
+        "purpose": "Overlays appearing."
+      },
+      {
+        "name": "button-lean",
+        "value": "translate up to 5px, 120ms in / 500ms out",
+        "purpose": "Landing buttons lean toward a fine pointer; off for touch and reduced motion."
+      },
+      {
+        "name": "flood-pulse",
+        "value": "900ms ease-in-out infinite",
+        "purpose": "Only the rider-in-water state loops; off under reduced motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one primary action on a screen: Start ride, Submit report. Hazard Red with a square arrow cell.",
+      "html": "<button class=\"ds-btn-primary\"><span>Start ride</span><span><svg width=\"20\" height=\"20\" viewBox=\"0 0 256 256\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M221.66 133.66l-72 72a8 8 0 0 1-11.32-11.32L196.69 136H40a8 8 0 0 1 0-16h156.69l-58.35-58.34a8 8 0 0 1 11.32-11.32l72 72a8 8 0 0 1 0 11.32z\"/></svg></span></button>",
+      "css": ".ds-btn-primary { display: flex; align-items: stretch; width: 320px; height: 48px; padding: 0; border: none; border-radius: 0; background: #E8301C; color: #FAFAFA; font: 600 14px/1.25 'Geist Variable', 'Noto Sans Khmer Variable', system-ui, sans-serif; cursor: pointer; transition: transform 150ms cubic-bezier(0.23, 1, 0.32, 1), background-color 150ms ease; } .ds-btn-primary > span:first-child { flex: 1; display: flex; align-items: center; justify-content: center; } .ds-btn-primary > span:last-child { display: grid; width: 56px; place-items: center; border-left: 1px solid rgba(0, 0, 0, 0.3); } .ds-btn-primary:hover { background: #F03A26; } .ds-btn-primary:active { transform: scale(0.985); } .ds-btn-primary:focus-visible { outline: 2px solid #FAFAFA; outline-offset: 2px; } .ds-btn-primary:disabled { background: rgba(255, 255, 255, 0.08); color: #71717A; cursor: not-allowed; }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Secondary action beside a primary: Report flood, Ride again.",
+      "html": "<button class=\"ds-btn-outline\">Report flood</button>",
+      "css": ".ds-btn-outline { height: 48px; padding: 0 20px; border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 0; background: #111113; color: #FAFAFA; font: 600 14px/1.25 'Geist Variable', 'Noto Sans Khmer Variable', system-ui, sans-serif; cursor: pointer; transition: transform 120ms cubic-bezier(0.23, 1, 0.32, 1), background-color 150ms ease, border-color 150ms ease; } .ds-btn-outline:hover { background: #131226; border-color: #9C98D6; } .ds-btn-outline:active { transform: scale(0.97); } .ds-btn-outline:focus-visible { outline: 2px solid #E8301C; outline-offset: 2px; }"
+    },
+    {
+      "name": "Light Button",
+      "kind": "button",
+      "refersTo": "button-light",
+      "description": "Confirming secondary on dark cards, such as Done on the arrival card.",
+      "html": "<button class=\"ds-btn-light\">Done</button>",
+      "css": ".ds-btn-light { height: 48px; padding: 0 20px; border: none; border-radius: 0; background: #F4F4F5; color: #09090B; font: 600 14px/1.25 'Geist Variable', 'Noto Sans Khmer Variable', system-ui, sans-serif; cursor: pointer; transition: transform 120ms cubic-bezier(0.23, 1, 0.32, 1), background-color 150ms ease, border-color 150ms ease; } .ds-btn-light:active { transform: scale(0.97); } .ds-btn-light:focus-visible { outline: 2px solid #E8301C; outline-offset: 2px; }"
+    },
+    {
+      "name": "Option Chips",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Vehicle and dry-only toggles under the route list; selected vehicle fills Hazard Red, dry-only fills emerald.",
+      "html": "<div class=\"ds-chips\"><button class=\"ds-chip is-dry\" aria-pressed=\"true\">Dry only</button><button class=\"ds-chip is-on\" aria-pressed=\"true\">Motorbike</button><button class=\"ds-chip\" aria-pressed=\"false\">Tuk-tuk</button><button class=\"ds-chip\" aria-pressed=\"false\">Car</button></div>",
+      "css": ".ds-chips { display: flex; gap: 4px; } .ds-chip { height: 40px; padding: 0 10px; border: none; border-radius: 0; background: transparent; color: #D4D4D8; font: 500 13px/1 'Geist Variable', 'Noto Sans Khmer Variable', system-ui, sans-serif; cursor: pointer; transition: transform 120ms cubic-bezier(0.23, 1, 0.32, 1), background-color 150ms ease, border-color 150ms ease; } .ds-chip:active { transform: scale(0.97); } .ds-chip:focus-visible { outline: 2px solid #E8301C; outline-offset: 2px; } .ds-chip.is-on { background: #E8301C; color: #FAFAFA; } .ds-chip.is-dry { background: rgba(16, 185, 129, 0.15); color: #34D399; }"
+    },
+    {
+      "name": "Search Field",
+      "kind": "input",
+      "refersTo": "input-search",
+      "description": "Live-mode place search: Slab fill, square, Hazard Red edge while active.",
+      "html": "<label class=\"ds-search\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 256 256\" fill=\"#A1A1AA\" aria-hidden=\"true\"><path d=\"M229.66 218.34l-50.07-50.06a88.11 88.11 0 1 0-11.31 11.31l50.06 50.07a8 8 0 0 0 11.32-11.32zM40 112a72 72 0 1 1 72 72 72.08 72.08 0 0 1-72-72z\"/></svg><input placeholder=\"Search a place\" aria-label=\"Search a place\"></label>",
+      "css": ".ds-search { display: flex; align-items: center; gap: 8px; width: 320px; height: 48px; padding: 0 12px; background: #111113; border: 1px solid rgba(255, 255, 255, 0.15); } .ds-search:focus-within { border-color: #E8301C; } .ds-search input { flex: 1; min-width: 0; height: 100%; border: none; background: transparent; color: #F4F4F5; font: 400 16px/1 'Geist Variable', 'Noto Sans Khmer Variable', system-ui, sans-serif; outline: none; } .ds-search input::placeholder { color: #71717A; }"
+    },
+    {
+      "name": "Mono Label",
+      "kind": "custom",
+      "refersTo": "label",
+      "description": "Every caption, unit, column head and source line.",
+      "html": "<p class=\"ds-label\">Route · 4.2 km · 14 min</p>",
+      "css": ".ds-label { margin: 0; font: 400 11px/1rem 'Geist Mono Variable', 'Noto Sans Khmer Variable', ui-monospace, monospace; letter-spacing: 0.1em; text-transform: uppercase; color: #A1A1AA; font-variant-numeric: tabular-nums; }"
+    },
+    {
+      "name": "Route Option Row",
+      "kind": "card",
+      "refersTo": "list-row",
+      "description": "A route choice in the bottom sheet: status bar at the left edge, wash when selected.",
+      "html": "<div class=\"ds-routes\"><button class=\"ds-route is-on\" aria-pressed=\"true\"><i style=\"background:#10B981\"></i><span><b>Dry route</b><small>via Russian Blvd · 4.2 km</small></span><em>14 min</em></button><button class=\"ds-route\" aria-pressed=\"false\"><i style=\"background:#EF4444\"></i><span><b>Usual route</b><small>via St. 271 · knee-deep</small></span><em>11 min</em></button></div>",
+      "css": ".ds-routes { display: grid; gap: 1px; width: 340px; background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.12); } .ds-route { display: flex; align-items: stretch; min-height: 64px; padding: 0; border: none; border-radius: 0; background: #0E0E10; color: #F4F4F5; text-align: left; cursor: pointer; transition: transform 120ms cubic-bezier(0.23, 1, 0.32, 1), background-color 150ms ease, border-color 150ms ease; } .ds-route.is-on { background: #1A1A1C; } .ds-route:active { transform: scale(0.97); } .ds-route:focus-visible { outline: 2px solid #E8301C; outline-offset: 2px; } .ds-route i { width: 6px; flex-shrink: 0; } .ds-route span { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 0 12px; } .ds-route b { font: 600 14px/1.25 'Geist Variable', 'Noto Sans Khmer Variable', system-ui, sans-serif; } .ds-route small { font: 400 12px/1.3 'Geist Variable', 'Noto Sans Khmer Variable', system-ui, sans-serif; color: #A1A1AA; } .ds-route em { align-self: center; padding: 0 12px; font: 400 16px/1 'Geist Mono Variable', 'Noto Sans Khmer Variable', ui-monospace, monospace; font-style: normal; font-variant-numeric: tabular-nums; }"
+    },
+    {
+      "name": "Hazard Stripe",
+      "kind": "custom",
+      "refersTo": "hazard-red",
+      "description": "A 4px warning band used sparingly as an edge, never as a fill.",
+      "html": "<div class=\"ds-stripe\"></div>",
+      "css": ".ds-stripe { width: 320px; height: 4px; background: repeating-linear-gradient(135deg, #E8301C 0 6px, #0A0A0B 6px 12px); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Industrial Telemetry",
+    "overview": "PhnomFlood reads like a field instrument pointed at the city's water. A near-black substrate, solid slabs edged with 1px hairlines, square corners everywhere, and every number set in a monospace face so values line up and never jitter as they update. The landing page and the rider app share one recipe: the landing page states it loudly with huge expanded display type and halftone imagery, the app states it quietly through the same type, rules and colour discipline at working size.\n\nColour is rationed. One brand accent, Hazard Red, which is also the \"impassable\" signal, so brand and danger never disagree. One quiet secondary, Dusk, a storm-sky violet that answers the pointer and tints a few surfaces. Everything else that carries colour is data: emerald for clear roads, amber for caution, red for blocked, sky for water. Chrome is zinc greys on near-black. A faint film grain and scan-line texture give the dark surfaces material without decoration.\n\nMotion is a strong ease-out under 300 ms: things arrive instantly and settle. Controls are firm and fast, pressing down to 97% scale with no glow. The only pulsing, glowing elements in the system are hazards and the rider riding through water, so movement itself means \"pay attention\".",
+    "keyCharacteristics": [
+      "Dark, never pure black (#0A0A0B); one zinc family for every neutral.",
+      "Square corners on everything; only dots, pucks and the start pin are round.",
+      "Archivo heavy and expanded for display, Geist for text, Geist Mono for every number, unit and label.",
+      "One accent (Hazard Red) and one quiet secondary (Dusk); all other colour is semantic road-status data.",
+      "1px hairlines and gap-grids instead of shadows.",
+      "Firm, fast press states; motion under 300 ms with a strong ease-out.",
+      "Khmer and English are equal: the type system adapts for Khmer script rather than forcing Latin conventions on it."
+    ],
+    "rules": [
+      {
+        "name": "The One Accent Rule",
+        "body": "Hazard Red is the only action colour. If something is red, it is either the primary action or a blocked road; never decoration.",
+        "section": "colors"
+      },
+      {
+        "name": "The Dusk Is Touch Rule",
+        "body": "Dusk never marks an action and never marks road status. It appears where the pointer is, or as a quiet tinted surface, and on at most one surface per screen at rest.",
+        "section": "colors"
+      },
+      {
+        "name": "The Data Colours Are Data Rule",
+        "body": "Emerald, amber, red and sky mean road and water status and nothing else. Never use them for branding, illustration or emphasis.",
+        "section": "colors"
+      },
+      {
+        "name": "The No Pure Black Rule",
+        "body": "The darkest colour is Void (#0A0A0B). Neutrals all come from one zinc family.",
+        "section": "colors"
+      },
+      {
+        "name": "The Mono Numbers Rule",
+        "body": "Every number, id, unit and label is set in Geist Mono with tabular figures, so values never shift sideways as they update.",
+        "section": "typography"
+      },
+      {
+        "name": "The Khmer Has No Case Rule",
+        "body": "In Khmer (`html[lang='km']`) labels drop uppercase and wide tracking (0.02em) and take taller line heights (1.35 for labels, 1.3 for titles) for stacked vowels. Never force Latin display conventions onto Khmer.",
+        "section": "typography"
+      },
+      {
+        "name": "The 16px Field Rule",
+        "body": "Every input, textarea and select is at least 16px so mobile Safari never zooms in on focus.",
+        "section": "typography"
+      },
+      {
+        "name": "The Hairline Grid Rule",
+        "body": "Grouped cells are built as a 1px-gap grid on a hairline-tinted parent, so the dividers are exact and never double up.",
+        "section": "layout"
+      },
+      {
+        "name": "The Glow Means Water Rule",
+        "body": "Nothing glows except danger. Panels, buttons and cards have no shadow and no glow at rest or on hover.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Square Corner Rule",
+        "body": "If it is a surface or a control, its corners are square. Round is reserved for points on the map.",
+        "section": "shapes"
+      }
+    ],
+    "dos": [
+      "**Do** keep every surface and control square (radius 0); use full round only for map dots and pucks.",
+      "**Do** set every number, unit, id and caption in Geist Mono with tabular figures; captions at 11px, 0.1em tracking, uppercase, Ash (#A1A1AA).",
+      "**Do** separate content with 1px hairlines at 12% white, built as gap-grids.",
+      "**Do** make primary actions Hazard Red (#E8301C), 48px tall, with a 2px focus outline at 2px offset.",
+      "**Do** keep motion under 300 ms with the punch ease-out (cubic-bezier(0.23, 1, 0.32, 1)); presses scale to 0.97–0.985.",
+      "**Do** honour reduced motion (drop travel and loops, keep state changes) and reduced transparency (solid panels).",
+      "**Do** switch labels and titles to the Khmer rules (no uppercase, 0.02em tracking, taller line heights) under `html[lang='km']`.",
+      "**Do** cite a source in a mono label under every statistic."
+    ],
+    "donts": [
+      "**Don't** use rounded corners on panels, cards, buttons, chips or fields.",
+      "**Don't** use emerald, amber, red or sky for anything except road and water status.",
+      "**Don't** add a third brand colour, gradients or glow to chrome; glow is reserved for the rider in water.",
+      "**Don't** use Dusk for an action, a status, or body text; it is pointer feedback and quiet tint only.",
+      "**Don't** use pure black or a second grey family.",
+      "**Don't** add drop shadows to panels or cards; use tone and hairlines.",
+      "**Don't** set app text below 11px or form fields below 16px.",
+      "**Don't** rely on colour alone for a warning: pair it with shape (triangle or square), text and sound."
+    ]
+  }
+}

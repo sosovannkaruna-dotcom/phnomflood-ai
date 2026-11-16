@@ -30,6 +30,11 @@ export default {
         signal: '#E8301C',
         // Same hue, lifted for text on dark (AA contrast at 12px)
         flare: '#FF6A55',
+        // Secondary: storm-dusk violet. The "touch" colour: hover and pointer feedback, and quiet
+        // tinted surfaces. Never an action (that is signal) and never road status.
+        dusk: '#9C98D6',
+        'dusk-mid': '#5D5AA6',
+        'dusk-deep': '#131226',
         // Neutral substrate (one zinc family, never pure black)
         void: '#0A0A0B',
         slab: '#111113',

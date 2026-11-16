@@ -4,9 +4,10 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
 import QRCode from 'qrcode'
 import { ArrowRight, ArrowUpRight, ArrowsClockwise, Camera, CloudRain, DeviceMobile, Drop, NavigationArrow, Path, ShieldCheck, Siren, ThumbsUp, Translate } from '@phosphor-icons/react'
-import { DEPTHS, VEHICLES } from '../lib/severity'
 
 gsap.registerPlugin(ScrollTrigger, useGSAP)
+
+import { DEPTHS, VEHICLES } from '../lib/severity'
 
 // The live map hero loads after first paint (MapLibre and the route data are large); the photo shows until then.
 const HeroMap = lazy(() => import('./HeroMap'))
@@ -63,15 +64,52 @@ const STAGES = [
 const DEMO_LIST = ['A scripted storm: 32 mm/h of rain', 'A ride that meets a flood and reroutes on cue', 'Pre-written verdicts for four sample photos', 'Mock reports, kept on this device']
 const LIVE_LIST = ['Real rainfall from Open-Meteo, refreshed every 10 minutes', 'A real Vision AI check of any photo you take', 'Reports shared between every phone that opens it', 'Starts empty: every pin is a real report']
 
+// Buttons lean a few pixels toward the pointer (fine pointers only, never with reduced motion).
+const CAN_HOVER = typeof window !== 'undefined' && window.matchMedia('(hover: hover) and (pointer: fine)').matches && !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+const magnet = CAN_HOVER
+  ? {
+      onPointerMove(e: React.PointerEvent<HTMLElement>) {
+        const el = e.currentTarget
+        const r = el.getBoundingClientRect()
+        el.style.setProperty('--mx', `${(((e.clientX - r.left) / r.width - 0.5) * 10).toFixed(1)}px`)
+        el.style.setProperty('--my', `${(((e.clientY - r.top) / r.height - 0.5) * 8).toFixed(1)}px`)
+        el.classList.add('is-near')
+      },
+      onPointerLeave(e: React.PointerEvent<HTMLElement>) {
+        const el = e.currentTarget
+        el.style.removeProperty('--mx')
+        el.style.removeProperty('--my')
+        el.classList.remove('is-near')
+      },
+    }
+  : {}
+
+// Telemetry crosshair: hairlines and a coordinate readout follow the pointer inside a cell.
+function cross(e: React.PointerEvent<HTMLElement>) {
+  const el = e.currentTarget
+  const r = el.getBoundingClientRect()
+  const x = e.clientX - r.left
+  const y = e.clientY - r.top
+  el.style.setProperty('--cx', `${x.toFixed(0)}px`)
+  el.style.setProperty('--cy', `${y.toFixed(0)}px`)
+  const read = el.querySelector('.ln-cross-read')
+  if (read) read.textContent = `x ${(x / r.width).toFixed(2)}  y ${(y / r.height).toFixed(2)}`
+}
+
+/** Depth rank (0 clear … 3 waist) for a water level in centimetres. */
+const rankAt = (cm: number) => (cm >= DEPTHS.waist.cm ? 3 : cm >= DEPTHS.knee.cm ? 2 : cm >= DEPTHS.ankle.cm ? 1 : 0)
+const RANKED = [DEPTHS.clear, DEPTHS.ankle, DEPTHS.knee, DEPTHS.waist]
+
 function PrimaryButton({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
   return (
     <button
       onClick={onClick}
-      className="group inline-flex h-12 items-stretch whitespace-nowrap bg-signal text-sm font-semibold text-zinc-50 transition-transform duration-150 ease-punch active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-50"
+      {...magnet}
+      className="ln-magnet group inline-flex h-12 items-stretch whitespace-nowrap bg-signal text-sm font-semibold text-zinc-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-50"
     >
       <span className="flex items-center px-5">{children}</span>
-      <span className="grid w-12 place-items-center border-l border-black/25 transition-colors duration-200 group-hover:bg-black/15">
-        <ArrowRight weight="bold" className="h-4 w-4 transition-transform duration-200 ease-punch group-hover:translate-x-0.5" />
+      <span className="ln-arrow grid w-12 place-items-center border-l border-black/25">
+        <ArrowRight weight="bold" className="h-4 w-4 transition-transform duration-300 ease-punch group-hover:translate-x-1" />
       </span>
     </button>
   )
@@ -81,10 +119,12 @@ function GhostButton({ onClick, children }: { onClick: () => void; children: Rea
   return (
     <button
       onClick={onClick}
-      className="inline-flex h-12 items-center gap-2 whitespace-nowrap border border-white/25 px-5 text-sm font-semibold text-zinc-100 transition-[transform,background-color,border-color] duration-150 ease-punch hover:border-white/60 hover:bg-white/5 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-signal"
+      {...magnet}
+      className="ln-magnet group inline-flex h-12 items-center gap-2 whitespace-nowrap border border-white/25 px-5 text-sm font-semibold text-zinc-100 hover:border-dusk hover:bg-dusk-deep focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-signal"
+      style={{ transitionProperty: 'translate, scale, background-color, border-color' }}
     >
       {children}
-      <ArrowUpRight weight="bold" className="h-4 w-4" />
+      <ArrowUpRight weight="bold" className="h-4 w-4 transition-transform duration-300 ease-punch group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
     </button>
   )
 }
@@ -113,6 +153,9 @@ function LiveQr() {
 /** Landing page: the front door to the demo and the live app. */
 export default function Landing({ onOpen }: Props) {
   const root = useRef<HTMLDivElement>(null)
+  // Water level on the depth gauge, in centimetres
+  const [level, setLevel] = useState<number>(DEPTHS.knee.cm)
+  const levelRank = rankAt(level)
 
   const jump = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' })
   const navLink = 'transition-colors duration-150 hover:text-zinc-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-signal'
@@ -132,6 +175,12 @@ export default function Landing({ onOpen }: Props) {
         // Figures count in as they arrive, so the numbers read as evidence, not decoration.
         gsap.from('.figure', { y: 40, opacity: 0, duration: 0.8, stagger: 0.12, ease: 'power3.out', scrollTrigger: { trigger: '.figures', start: 'top 80%', once: true } })
 
+        gsap.utils.toArray<HTMLElement>('.fig-count').forEach((el) => {
+          const count = { v: 0 }
+          const to = Number(el.dataset.to)
+          gsap.to(count, { v: to, duration: 1.6, ease: 'power3.out', scrollTrigger: { trigger: '.figures', start: 'top 80%', once: true }, onUpdate: () => (el.textContent = String(Math.round(count.v))) })
+        })
+
         // Statement: words brighten in sequence as you read down the page.
         gsap.fromTo(
           '.stmt-word',
@@ -147,6 +196,9 @@ export default function Landing({ onOpen }: Props) {
           gsap.from(el, { opacity: 0, y: 36, duration: 0.8, ease: 'power3.out', scrollTrigger: { trigger: el, start: 'top 82%', once: true } })
         })
       })
+
+      // Scroll progress: a dusk hairline under the navigation.
+      gsap.to('.ln-progress', { scaleX: 1, ease: 'none', scrollTrigger: { start: 0, end: 'max', scrub: 0.3 } })
 
       // Product section: the title stays pinned while the three stages scroll past it.
       mm.add('(min-width: 1024px)', () => {
@@ -184,11 +236,12 @@ export default function Landing({ onOpen }: Props) {
           </nav>
           <button
             onClick={() => onOpen('demo')}
-            className="h-10 whitespace-nowrap border border-white/25 px-4 text-sm font-semibold transition-[transform,background-color] duration-150 ease-punch hover:bg-white/5 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-signal"
+            className="h-10 whitespace-nowrap border border-white/25 px-4 text-sm font-semibold transition-[transform,background-color,border-color] duration-150 ease-punch hover:border-dusk hover:bg-dusk-deep active:scale-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-signal"
           >
             Try the demo
           </button>
         </div>
+        <span className="ln-progress" aria-hidden />
       </header>
 
       <main id="main">
@@ -227,7 +280,7 @@ export default function Landing({ onOpen }: Props) {
         </section>
 
         {/* Street marquee: the only marquee on the page, and it is real street data */}
-        <section aria-label="Streets in the routing data" className="overflow-hidden border-y border-white/10 py-6">
+        <section aria-label="Streets in the routing data" className="ln-marquee-wrap overflow-hidden border-y border-white/10 py-6">
           <div className="ln-marquee flex w-max items-center gap-10 whitespace-nowrap">
             {[...STREETS, ...STREETS].map((k, i) => (
               <span key={`${k}-${i}`} className={`font-display text-4xl sm:text-5xl ${i % 2 ? 'ln-outline' : 'text-zinc-100'}`} aria-hidden={i >= STREETS.length}>
@@ -242,8 +295,12 @@ export default function Landing({ onOpen }: Props) {
           <h2 className="font-display max-w-[18ch] text-[clamp(2.25rem,5vw,4.5rem)]">A motorbike city with nowhere for the rain to go.</h2>
           <div className="figures mt-14 grid grid-cols-1 gap-px border border-white/15 bg-white/15 lg:grid-cols-12">
             {FIGURES.map((f, i) => (
-              <div key={f.value} className={`figure flex flex-col justify-between gap-10 p-7 ${f.span} ${i === 0 ? 'bg-slab' : 'bg-void'}`}>
-                <p className={`font-display text-[clamp(3.5rem,7vw,6.5rem)] ${i === 0 ? 'text-signal' : 'text-zinc-50'}`}>{f.value}</p>
+              <div key={f.value} onPointerMove={cross} className={`figure ln-cross flex flex-col justify-between gap-10 p-7 ${f.span} ${i === 0 ? 'bg-slab' : 'bg-void'}`}>
+                <span className="ln-cross-read" aria-hidden />
+                <p className={`font-display text-[clamp(3.5rem,7vw,6.5rem)] ${i === 0 ? 'text-signal' : 'text-zinc-50'}`} aria-label={f.value}>
+                  <span className="fig-count" data-to={parseInt(f.value, 10)} aria-hidden>{parseInt(f.value, 10)}</span>
+                  <span aria-hidden>{f.value.replace(/^\d+/, '')}</span>
+                </p>
                 <div>
                   <p className="max-w-[34ch] text-base leading-relaxed text-zinc-300">{f.text}</p>
                   <p className="mt-4 font-mono text-xs text-zinc-500">{f.source}</p>
@@ -261,39 +318,52 @@ export default function Landing({ onOpen }: Props) {
           <div className="mt-14 grid grid-flow-dense grid-cols-1 gap-px border border-white/15 bg-white/15 lg:grid-cols-12">
             <div className="slices bg-void lg:col-span-8 lg:row-span-2">
               <div className="grid h-full min-h-[420px] grid-cols-1 gap-px bg-white/15 sm:grid-cols-3">
-                {SLICES.map((s) => (
-                  <figure key={s.name} className="slice group relative min-h-[260px] overflow-hidden bg-void">
-                    <img src={s.src} alt={s.alt} loading="lazy" className="ln-halftone absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-punch group-hover:scale-105" />
+                {SLICES.map((s, i) => (
+                  <figure key={s.name} data-on={levelRank === i + 1 || undefined} className="slice group relative min-h-[260px] cursor-pointer overflow-hidden bg-void" onClick={() => setLevel(s.cm)}>
+                    <img src={s.src} alt={s.alt} loading="lazy" className="ln-halftone absolute inset-0 h-full w-full object-cover transition-[transform,filter] duration-700 ease-punch group-hover:scale-105 group-data-[on]:scale-105 group-data-[on]:[filter:grayscale(0.15)_contrast(1.15)_brightness(0.95)]" />
                     <div className="absolute inset-0 bg-gradient-to-t from-void via-void/30 to-transparent" />
+                    <span className="absolute inset-x-0 bottom-0 h-1 origin-left scale-x-0 transition-transform duration-500 ease-punch group-data-[on]:scale-x-100" style={{ background: RANKED[i + 1].color }} aria-hidden />
                     <figcaption className="absolute inset-x-0 bottom-0 p-5">
                       <p className="font-mono text-3xl text-zinc-50">
                         {s.cm}
                         <span className="ml-1 text-sm text-zinc-400">cm</span>
                       </p>
                       <p className="mt-1 font-display text-xl">{s.name}</p>
-                      <p className="mt-2 max-w-[22ch] translate-y-1 text-sm leading-snug text-zinc-300 opacity-0 transition-[opacity,transform] duration-300 ease-punch group-hover:translate-y-0 group-hover:opacity-100 max-sm:translate-y-0 max-sm:opacity-100">{s.note}</p>
+                      <p className="mt-2 max-w-[22ch] translate-y-1 text-sm leading-snug text-zinc-300 opacity-0 transition-[opacity,transform] duration-300 ease-punch group-hover:translate-y-0 group-hover:opacity-100 group-data-[on]:translate-y-0 group-data-[on]:opacity-100 max-sm:translate-y-0 max-sm:opacity-100">{s.note}</p>
                     </figcaption>
                   </figure>
                 ))}
               </div>
             </div>
 
-            <div className="bg-slab p-7 lg:col-span-4">
+            <div className="bg-dusk-deep p-7 lg:col-span-4">
               <h3 className="font-display text-2xl">Who stops where</h3>
-              <dl className="mt-6 divide-y divide-white/10 font-mono text-sm">
-                {(['moto', 'tuktuk', 'car'] as const).map((id) => {
-                  const v = VEHICLES[id]
-                  const block = Object.values(DEPTHS).find((d) => d.rank === v.blockRank)
-                  return (
-                    <div key={id} className="flex items-baseline justify-between gap-4 py-3">
-                      <dt className="text-zinc-300">{v.short}</dt>
-                      <dd className="text-zinc-400">
-                        stops at <span className="text-zinc-50">{block?.cm} cm</span>
-                      </dd>
-                    </div>
-                  )
-                })}
-              </dl>
+              <div className="mt-6 flex gap-6">
+                <div className="ln-gauge" style={{ '--level': `${(level / 50) * 100}%`, '--water': levelRank ? RANKED[levelRank].color : '#38BDF8' } as React.CSSProperties}>
+                  <div className="ln-gauge-fill" />
+                  <input type="range" min={0} max={50} step={1} value={level} onChange={(e) => setLevel(Number(e.target.value))} aria-label="Water depth in centimetres" aria-valuetext={`${level} centimetres, ${RANKED[levelRank].short}`} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-mono text-4xl text-zinc-50">
+                    {level}
+                    <span className="ml-1 text-sm text-zinc-400">cm</span>
+                  </p>
+                  <p className="mt-1 text-sm font-semibold" style={{ color: levelRank === 3 ? '#FF6A55' : levelRank ? RANKED[levelRank].color : '#38BDF8' }}>{levelRank ? RANKED[levelRank].short : 'Wet road'}</p>
+                  <dl className="mt-4 divide-y divide-white/10 border-t border-white/10 font-mono text-sm">
+                    {(['moto', 'tuktuk', 'car'] as const).map((id) => {
+                      const v = VEHICLES[id]
+                      const state = levelRank >= v.blockRank ? 'Stops' : levelRank > 0 && levelRank >= v.cautionRank ? 'Slows' : 'Passes'
+                      return (
+                        <div key={id} className="flex items-baseline justify-between gap-3 py-2.5">
+                          <dt className="text-zinc-300">{v.short}</dt>
+                          <dd className={state === 'Stops' ? 'text-flare' : state === 'Slows' ? 'text-amber-400' : 'text-emerald-400'}>{state}</dd>
+                        </div>
+                      )
+                    })}
+                  </dl>
+                </div>
+              </div>
+              <p className="mt-5 text-sm text-dusk">Drag the water level, or pick a photo.</p>
             </div>
 
             <div className="bg-signal p-7 text-zinc-50 lg:col-span-4">
@@ -329,7 +399,7 @@ export default function Landing({ onOpen }: Props) {
                 <h3 className="font-display text-3xl">{stage.title}</h3>
                 <ul className="mt-8 divide-y divide-white/10 border-y border-white/10">
                   {stage.points.map(({ Icon, text }) => (
-                    <li key={text} className="flex items-start gap-4 py-5">
+                    <li key={text} className="ln-row flex items-start gap-4 py-5">
                       <Icon weight="bold" className="mt-0.5 h-5 w-5 shrink-0 text-signal" />
                       <span className="max-w-[44ch] text-base leading-relaxed text-zinc-200">{text}</span>
                     </li>
@@ -395,11 +465,12 @@ export default function Landing({ onOpen }: Props) {
             <div className="mt-12 flex flex-wrap items-center gap-3">
               <button
                 onClick={() => onOpen('demo')}
-                className="group inline-flex h-12 items-stretch whitespace-nowrap bg-zinc-950 text-sm font-semibold text-zinc-50 transition-transform duration-150 ease-punch active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-50"
+                {...magnet}
+                className="ln-magnet group inline-flex h-12 items-stretch whitespace-nowrap bg-zinc-950 text-sm font-semibold text-zinc-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-50"
               >
                 <span className="flex items-center px-5">Try the demo</span>
-                <span className="grid w-12 place-items-center border-l border-white/20">
-                  <ArrowRight weight="bold" className="h-4 w-4 transition-transform duration-200 ease-punch group-hover:translate-x-0.5" />
+                <span className="ln-arrow grid w-12 place-items-center border-l border-white/20">
+                  <ArrowRight weight="bold" className="h-4 w-4 transition-transform duration-300 ease-punch group-hover:translate-x-1" />
                 </span>
               </button>
               <button

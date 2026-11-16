@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { PHNOM_PENH_CENTER } from '../../data/routes'
-import { routeBetween, type FoundPlace } from '../../services/liveRouting'
+import { hasKhmerNames, learnEnglishNames, routeBetween, withEnglishNames, type FoundPlace } from '../../services/liveRouting'
 import { addRoadPaths, metresBetween } from '../lib/trip'
 import type { LatLng, Preset } from '../types'
 
@@ -108,6 +108,13 @@ export function useLiveRoute(gps: Gps, unnamed: string, english: boolean) {
         routedFrom.current = from
         setPreset(next)
         setStatus('ready')
+        // English, on a route leaving the built-in list's area: the route shows now, and its remaining
+        // Khmer street names switch to English when the Overpass lookup returns.
+        if (english && hasKhmerNames(next)) {
+          void learnEnglishNames(next, ctrl.signal).then((learned) => {
+            if (learned && !ctrl.signal.aborted) setPreset((p) => (p === next ? withEnglishNames(next) : p))
+          })
+        }
       } catch {
         if (!ctrl.signal.aborted) setStatus('error')
       } finally {
