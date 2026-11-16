@@ -1,6 +1,6 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Motorcycle as Bike, Car, Taxi as CarTaxiFront, Check, Clock, Drop, MagnifyingGlass as Search, NavigationArrow, ShieldCheck, Stop, Warning as TriangleAlert, X } from '@phosphor-icons/react'
+import { Motorcycle as Bike, Car, Taxi as CarTaxiFront, CaretDown, Check, Clock, Drop, MagnifyingGlass as Search, NavigationArrow, ShieldCheck, Stop, Warning as TriangleAlert, X } from '@phosphor-icons/react'
 import { DEPTHS } from '../../lib/severity'
 import { useT, type Key } from '../../i18n'
 import type { AppMode } from '../../shared/mode'
@@ -51,6 +51,8 @@ interface Props {
     status: RouteStatus
     note: string | null
     renderSearch: (close: () => void) => ReactNode
+    /** Forget the chosen destination (back to planning) */
+    onClear: () => void
   }
 }
 
@@ -87,6 +89,13 @@ export default function BottomSheet({ trip, reports, position, mode, sync, ride,
       format: (ms) => time.format(ms),
     })
   })()
+  // Escape closes the expanded sheet, like any panel.
+  useEffect(() => {
+    if (!expanded) return
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setExpanded(false)
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [expanded])
   const ADVICE_COLOR = { go: 'text-emerald-400', wait: 'text-amber-400', warn: 'text-flare' }
   const matches = trip.presets.filter((p) => `${p.label} ${p.destination.name} ${p.origin.name}`.toLowerCase().includes(query.toLowerCase()))
   const nearby = reports
@@ -155,8 +164,9 @@ export default function BottomSheet({ trip, reports, position, mode, sync, ride,
           </div>
         ) : (
           <>
-            {/* Destination: a labelled readout, tap to change */}
-            <button onClick={() => setSearching(true)} className="rd-press flex h-12 w-full items-stretch border border-white/[0.15] bg-slab text-left">
+            {/* Destination: a labelled readout, tap to change; live, an X beside it clears the trip */}
+            <div className="flex h-12 items-stretch">
+            <button onClick={() => setSearching(true)} className="rd-press flex h-12 min-w-0 flex-1 items-stretch border border-white/[0.15] bg-slab text-left">
               <span className="grid w-12 shrink-0 place-items-center border-r border-white/[0.12] text-zinc-400">
                 <Search className="h-5 w-5" />
               </span>
@@ -169,6 +179,12 @@ export default function BottomSheet({ trip, reports, position, mode, sync, ride,
                 <span className="font-mono text-base text-zinc-50">{live?.status === 'routing' ? '…' : hasRoute ? t('sheet.min', { n: active.minutes }) : '–'}</span>
               </span>
             </button>
+            {live?.destination && ride === 'idle' && (
+              <button onClick={live.onClear} aria-label={t('live.clear')} title={t('live.clear')} className="rd-press grid w-12 shrink-0 place-items-center border border-l-0 border-white/[0.15] bg-slab text-zinc-300">
+                <X className="h-5 w-5" />
+              </button>
+            )}
+            </div>
 
             {/* Before Start: the usual map route next to ours, so the difference is plain in five seconds */}
             {hasRoute && ride === 'idle' && trip.standard.candidate.id !== active.candidate.id && trip.standard.worst > active.worst && (
@@ -287,6 +303,12 @@ export default function BottomSheet({ trip, reports, position, mode, sync, ride,
             className="overflow-hidden"
           >
             <div className="cc-scroll max-h-[38dvh] space-y-5 overflow-y-auto overflow-x-hidden border-t border-white/[0.12] px-3 py-4">
+              <div className="-mt-1 flex items-center justify-between">
+                <span className="tl-label">{t('sheet.details')}</span>
+                <button onClick={() => setExpanded(false)} className="rd-press -mr-1 flex h-10 items-center gap-1.5 px-2 text-sm font-medium text-zinc-200">
+                  {t('sheet.close')} <CaretDown className="h-4 w-4" />
+                </button>
+              </div>
               {live && briefing && <BriefingCard state={briefing} />}
               {hasRoute && (
                 <section>

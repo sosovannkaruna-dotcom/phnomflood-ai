@@ -497,6 +497,7 @@ function Rider({ onHome, tour = false }: { onHome: () => void; tour?: boolean })
                 destination: liveRoute.destination?.short ?? null,
                 status: liveRoute.status,
                 note: liveNote,
+                onClear: () => liveRoute.setDestination(null),
                 renderSearch: (close) => (
                   <PlaceSearch
                     near={gps.point}

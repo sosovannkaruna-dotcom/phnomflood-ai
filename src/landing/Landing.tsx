@@ -1,13 +1,14 @@
-import { Suspense, lazy, useEffect, useRef, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
 import QRCode from 'qrcode'
-import { ArrowRight, ArrowUpRight, ArrowsClockwise, Camera, CloudRain, DeviceMobile, Drop, NavigationArrow, Path, ShieldCheck, Siren, ThumbsUp, Translate } from '@phosphor-icons/react'
+import { ArrowRight, ArrowUpRight, ArrowsClockwise, List, Camera, CloudRain, DeviceMobile, Drop, NavigationArrow, Path, ShieldCheck, Siren, ThumbsUp, Translate } from '@phosphor-icons/react'
 
 gsap.registerPlugin(ScrollTrigger, useGSAP)
 
 import { DEPTHS, VEHICLES } from '../lib/severity'
+import MobileMenu from './MobileMenu'
 
 // The live map hero loads after first paint (MapLibre and the route data are large); the photo shows until then.
 const HeroMap = lazy(() => import('./HeroMap'))
@@ -146,6 +147,15 @@ export default function Landing({ onOpen }: Props) {
   const levelRank = rankAt(level)
 
   const jump = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' })
+  const [menuOpen, setMenuOpen] = useState(false)
+  const closeMenu = useCallback(() => setMenuOpen(false), [])
+  const menuItems = [
+    { label: 'Why', onSelect: () => jump('why') },
+    { label: 'How it reads water', onSelect: () => jump('depth') },
+    { label: 'On the road', onSelect: () => jump('product') },
+    { label: 'Demo or live', onSelect: () => jump('versions') },
+    { label: 'Open data', onSelect: () => (window.location.hash = '#/data') },
+  ]
   const navLink = 'transition-colors duration-150 hover:text-zinc-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-signal'
 
   useGSAP(
@@ -225,15 +235,27 @@ export default function Landing({ onOpen }: Props) {
             <button onClick={() => jump('versions')} className={navLink}>Demo or live</button>
             <a href="#/data" className={navLink}>Open data</a>
           </nav>
-          <button
-            onClick={() => onOpen('demo')}
-            className="h-10 whitespace-nowrap border border-white/25 px-4 text-sm font-semibold transition-[transform,background-color,border-color] duration-150 ease-punch hover:border-dusk hover:bg-dusk-deep active:scale-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-signal"
-          >
-            Try the demo
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => onOpen('demo')}
+              className="hidden h-10 whitespace-nowrap border sm:block border-white/25 px-4 text-sm font-semibold transition-[transform,background-color,border-color] duration-150 ease-punch hover:border-dusk hover:bg-dusk-deep active:scale-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-signal"
+            >
+              Try the demo
+            </button>
+            <button
+              onClick={() => setMenuOpen(true)}
+              aria-label="Open menu"
+              aria-expanded={menuOpen}
+              className="grid h-10 w-10 place-items-center border border-white/25 transition-[transform,background-color] duration-150 ease-punch active:scale-[0.95] focus-visible:outline focus-visible:outline-2 focus-visible:outline-signal md:hidden"
+            >
+              <List weight="bold" className="h-5 w-5" />
+            </button>
+          </div>
         </div>
         <span className="ln-progress" aria-hidden />
       </header>
+
+      <MobileMenu open={menuOpen} onClose={closeMenu} items={menuItems} onDemo={() => onOpen('demo')} onLive={() => onOpen('live')} />
 
       <main id="main">
         {/* Attention: hero */}

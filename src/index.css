@@ -594,6 +594,80 @@ body::after {
   transform-origin: left;
 }
 
+/* Phone menu: a panel slides in from the right over a dimmed page. Transitions (not keyframes),
+   so a quick open-close reverses smoothly from wherever it is. */
+.ln-menu {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  pointer-events: none;
+}
+.ln-menu.is-open {
+  pointer-events: auto;
+}
+.ln-menu-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 10, 11, 0.6);
+  opacity: 0;
+  transition: opacity 240ms ease;
+}
+.ln-menu.is-open .ln-menu-scrim {
+  opacity: 1;
+}
+.ln-menu-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  width: min(340px, 86vw);
+  flex-direction: column;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: #0e0e10;
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+  transform: translateX(100%);
+  visibility: hidden;
+  transition: transform 300ms cubic-bezier(0.32, 0.72, 0, 1), visibility 0s linear 300ms;
+}
+.ln-menu.is-open .ln-menu-panel {
+  transform: translateX(0);
+  visibility: visible;
+  transition: transform 340ms cubic-bezier(0.32, 0.72, 0, 1), visibility 0s;
+}
+.ln-menu-item {
+  display: flex;
+  min-height: 56px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-family: 'Archivo Variable', 'Geist Variable', system-ui, sans-serif;
+  font-stretch: 110%;
+  font-weight: 700;
+  font-size: 20px;
+  text-align: left;
+  color: #f4f4f5;
+  opacity: 0;
+  transform: translateX(16px);
+  transition: opacity 200ms ease, transform 300ms cubic-bezier(0.23, 1, 0.32, 1), background-color 150ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+/* Rows settle in one after another as the panel arrives; closing drops them all at once. */
+.ln-menu.is-open .ln-menu-item {
+  opacity: 1;
+  transform: translateX(0);
+  transition-delay: calc(80ms + var(--i, 0) * 40ms);
+}
+.ln-menu-item:active {
+  background: #131226;
+}
+.ln-menu-item:focus-visible {
+  outline: 2px solid #e8301c;
+  outline-offset: -2px;
+}
+
 /* Buttons lean toward the pointer (set from script as --mx / --my, in px) */
 .ln-magnet {
   translate: var(--mx, 0) var(--my, 0);
