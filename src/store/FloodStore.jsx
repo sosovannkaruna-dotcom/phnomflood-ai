@@ -4,7 +4,7 @@
 //   (src/services/sync.js), otherwise kept in this browser and labelled as such.
 
 import { createContext, useContext, useEffect, useMemo, useReducer, useRef, useState } from 'react'
-import { SEED_REPORTS, SEED_QUEUE, BASE_RIDERS_REROUTED } from '../data/seed'
+import { SEED_REPORTS, SEED_QUEUE, BASE_RIDERS_REROUTED, SEED_VERSION } from '../data/seed'
 import { clearState, loadState, saveState } from '../services/api'
 import { clearRemote, confirmRemote, fetchChanges, insertReport, syncConfigured } from '../services/sync'
 import { DEPTHS } from '../lib/severity'
@@ -21,6 +21,7 @@ function freshState(mode) {
     queue: SEED_QUEUE.map((q) => ({ ...q, status: 'open' })),
     ridersRerouted: BASE_RIDERS_REROUTED,
     feed: [],
+    seedVersion: SEED_VERSION,
   }
 }
 
@@ -28,7 +29,7 @@ function initialState(mode) {
   // With shared sync on, the server is the source of truth: start empty and load from it.
   if (mode === 'live' && syncConfigured) return freshState('live')
   const saved = loadState(mode)
-  if (mode === 'demo' && saved?.reports?.length && saved?.queue) return { ...freshState(mode), ...saved }
+  if (mode === 'demo' && saved?.reports?.length && saved?.queue && saved?.seedVersion === SEED_VERSION) return { ...freshState(mode), ...saved }
   if (mode === 'live' && saved?.reports) return { ...freshState(mode), ...saved }
   return freshState(mode)
 }

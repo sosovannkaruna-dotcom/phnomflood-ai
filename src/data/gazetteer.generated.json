@@ -910,5 +910,293 @@
   "sangkat": "Chak Angrae Leu",
   "lat": 11.52797,
   "lng": 104.93181
+ },
+ {
+  "name": "St. 550",
+  "area": "St. 550",
+  "khan": "Toul Kork",
+  "sangkat": "Boeung Kak Ti Muoy",
+  "lat": 11.57933,
+  "lng": 104.89788
+ },
+ {
+  "name": "St. 105",
+  "area": "St. 105",
+  "khan": "Chamkar Mon",
+  "sangkat": "Tuol Tumpung Ti Muoy",
+  "lat": 11.53903,
+  "lng": 104.91983
+ },
+ {
+  "name": "St. 105",
+  "area": "St. 105",
+  "khan": "Chamkar Mon",
+  "sangkat": "Boeng Trabaek",
+  "lat": 11.53434,
+  "lng": 104.92078
+ },
+ {
+  "name": "Preah Monivong Blvd",
+  "area": "Preah Monivong Blvd",
+  "khan": "Chamkar Mon",
+  "sangkat": "Phsar Daeum Thkov",
+  "lat": 11.53323,
+  "lng": 104.92401
+ },
+ {
+  "name": "Preah Monivong Blvd",
+  "area": "Preah Monivong Blvd",
+  "khan": "Mean Chey",
+  "sangkat": "Chak Angrae Leu",
+  "lat": 11.53026,
+  "lng": 104.9312
+ },
+ {
+  "name": "National Highway 1",
+  "area": "National Highway 1",
+  "khan": "Chbar Ampov",
+  "sangkat": "Chbar Ampov Ti Muoy",
+  "lat": 11.53181,
+  "lng": 104.93635
+ },
+ {
+  "name": "Preah Norodom Blvd",
+  "area": "Preah Norodom Blvd",
+  "khan": "Chamkar Mon",
+  "sangkat": "Boeng Trabaek",
+  "lat": 11.53661,
+  "lng": 104.92858
+ },
+ {
+  "name": "Oknha Ing Bunheov",
+  "area": "Oknha Ing Bunheov",
+  "khan": "Daun Penh",
+  "sangkat": "Phsar Thmey Ti Pir",
+  "lat": 11.57261,
+  "lng": 104.91711
+ },
+ {
+  "name": "Rue Ung Po Kun",
+  "area": "Rue Ung Po Kun",
+  "khan": "Prampir Makara",
+  "sangkat": "Orussey Ti Buon",
+  "lat": 11.56478,
+  "lng": 104.91841
+ },
+ {
+  "name": "Sok Hok",
+  "area": "Sok Hok",
+  "khan": "Prampir Makara",
+  "sangkat": "Boeng Prolit",
+  "lat": 11.55987,
+  "lng": 104.9186
+ },
+ {
+  "name": "Kampuchea Krom Blvd",
+  "area": "Kampuchea Krom Blvd",
+  "khan": "Prampir Makara",
+  "sangkat": "Monourom",
+  "lat": 11.56891,
+  "lng": 104.91599
+ },
+ {
+  "name": "Russian Blvd",
+  "area": "Russian Blvd",
+  "khan": "Daun Penh",
+  "sangkat": "Phsar Thmey Ti Pir",
+  "lat": 11.57084,
+  "lng": 104.91095
+ },
+ {
+  "name": "City Center Blvd",
+  "area": "City Center Blvd",
+  "khan": "Daun Penh",
+  "sangkat": "Phsar Thmey Ti Pir",
+  "lat": 11.57495,
+  "lng": 104.91039
+ },
+ {
+  "name": "Rachana Street",
+  "area": "Rachana Street",
+  "khan": "Daun Penh",
+  "sangkat": "Phsar Thmey Ti Pir",
+  "lat": 11.57453,
+  "lng": 104.90475
+ },
+ {
+  "name": "Preah Monivong Blvd",
+  "area": "Preah Monivong Blvd",
+  "khan": "Daun Penh",
+  "sangkat": "Srah Chak",
+  "lat": 11.58148,
+  "lng": 104.91658
+ },
+ {
+  "name": "Oknha Tep Phan",
+  "area": "Oknha Tep Phan",
+  "khan": "Prampir Makara",
+  "sangkat": "Phsar Depou Ti Bei",
+  "lat": 11.56321,
+  "lng": 104.90713
+ },
+ {
+  "name": "St. 63",
+  "area": "St. 63",
+  "khan": "Sen Sok",
+  "sangkat": "Teuk Thla",
+  "lat": 11.55836,
+  "lng": 104.87572
+ },
+ {
+  "name": "St. 63",
+  "area": "St. 63",
+  "khan": "Sen Sok",
+  "sangkat": "Teuk Thla",
+  "lat": 11.55593,
+  "lng": 104.87129
+ },
+ {
+  "name": "Russian Blvd",
+  "area": "Russian Blvd",
+  "khan": "Sen Sok",
+  "sangkat": "Teuk Thla",
+  "lat": 11.56292,
+  "lng": 104.87094
+ },
+ {
+  "name": "Street 9K",
+  "area": "Street 9K",
+  "khan": "Pou Senchey",
+  "sangkat": "Kakab 1",
+  "lat": 11.55911,
+  "lng": 104.85054
+ },
+ {
+  "name": "St. 1003",
+  "area": "St. 1003",
+  "khan": "Russey Keo",
+  "sangkat": "Phnom Penh Thmei",
+  "lat": 11.6062,
+  "lng": 104.88688
+ },
+ {
+  "name": "Angkor Blvd",
+  "area": "Angkor Blvd",
+  "khan": "Russey Keo",
+  "sangkat": "Tuol Sangkae 2",
+  "lat": 11.60419,
+  "lng": 104.89129
+ },
+ {
+  "name": "Local street",
+  "area": "Local street",
+  "khan": "Russey Keo",
+  "sangkat": "Tuol Sangkae 2",
+  "lat": 11.59949,
+  "lng": 104.89338
+ },
+ {
+  "name": "Angkor Blvd",
+  "area": "Angkor Blvd",
+  "khan": "Russey Keo",
+  "sangkat": "Tuol Sangkae 2",
+  "lat": 11.59516,
+  "lng": 104.89506
+ },
+ {
+  "name": "St. 273",
+  "area": "St. 273",
+  "khan": "Daun Penh",
+  "sangkat": "Boeung Kak Ti Muoy",
+  "lat": 11.58339,
+  "lng": 104.90736
+ },
+ {
+  "name": "St. 70",
+  "area": "St. 70",
+  "khan": "Daun Penh",
+  "sangkat": "Srah Chak",
+  "lat": 11.5845,
+  "lng": 104.91162
+ },
+ {
+  "name": "St. 566",
+  "area": "St. 566",
+  "khan": "Toul Kork",
+  "sangkat": "Boeung Kak Ti Pir",
+  "lat": 11.58253,
+  "lng": 104.89197
+ },
+ {
+  "name": "St. 516",
+  "area": "St. 516",
+  "khan": "Toul Kork",
+  "sangkat": "Boeung Kak Ti Muoy",
+  "lat": 11.58452,
+  "lng": 104.90242
+ },
+ {
+  "name": "Chbar Ampov Market",
+  "area": "Chbar Ampov Market",
+  "khan": "Chbar Ampov",
+  "sangkat": "Chbar Ampov Ti Muoy",
+  "lat": 11.53195,
+  "lng": 104.93622
+ },
+ {
+  "name": "Railway Station",
+  "area": "Railway Station",
+  "khan": "Daun Penh",
+  "sangkat": "Phsar Thmey Ti Pir",
+  "lat": 11.57257,
+  "lng": 104.91684
+ },
+ {
+  "name": "Orussey Market",
+  "area": "Orussey Market",
+  "khan": "Prampir Makara",
+  "sangkat": "Orussey Ti Pir",
+  "lat": 11.56376,
+  "lng": 104.91436
+ },
+ {
+  "name": "ITC",
+  "area": "ITC",
+  "khan": "Toul Kork",
+  "sangkat": "Phsar Depou Ti Muoy",
+  "lat": 11.57061,
+  "lng": 104.898
+ },
+ {
+  "name": "Calmette Hospital",
+  "area": "Calmette Hospital",
+  "khan": "Daun Penh",
+  "sangkat": "Srah Chak",
+  "lat": 11.58133,
+  "lng": 104.91569
+ },
+ {
+  "name": "Old Market",
+  "area": "Old Market",
+  "khan": "Daun Penh",
+  "sangkat": "Phsar Chas",
+  "lat": 11.57327,
+  "lng": 104.92646
+ },
+ {
+  "name": "Vattanac Capital",
+  "area": "Vattanac Capital",
+  "khan": "Daun Penh",
+  "sangkat": "Phsar Thmey Ti Muoy",
+  "lat": 11.57349,
+  "lng": 104.91877
+ },
+ {
+  "name": "Night Market",
+  "area": "Night Market",
+  "khan": "Daun Penh",
+  "sangkat": "Phsar Kandal Ti Muoy",
+  "lat": 11.57428,
+  "lng": 104.92784
  }
 ]

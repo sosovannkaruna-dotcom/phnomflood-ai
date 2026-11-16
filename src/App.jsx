@@ -8,8 +8,9 @@ const Landing = lazy(() => import('./landing/Landing'))
 const RiderApp = lazy(() => import('./rider/RiderApp'))
 
 // Two versions of the rider app share one codebase: a scripted demo and the live app.
-const ROUTES = { '': 'landing', '#/': 'landing', '#/demo': 'demo', '#/live': 'live', '#/rider': 'demo' }
-const HASH = { landing: '#/', demo: '#/demo', live: '#/live' }
+// #/tour is the demo with the guided one-minute walkthrough playing on top.
+const ROUTES = { '': 'landing', '#/': 'landing', '#/demo': 'demo', '#/live': 'live', '#/rider': 'demo', '#/tour': 'tour' }
+const HASH = { landing: '#/', demo: '#/demo', live: '#/live', tour: '#/tour' }
 
 const readRoute = () => ROUTES[window.location.hash] ?? 'landing'
 
@@ -64,13 +65,14 @@ export default function App() {
   }
 
   // Phone: the rider app is the whole screen. Larger screens: shown as a device, for demos.
+  const mode = route === 'tour' ? 'demo' : route
   return (
-    <ModeProvider mode={route}>
-      <FloodProvider key={route} mode={route}>
+    <ModeProvider mode={mode}>
+      <FloodProvider key={route} mode={mode}>
         <div className="relative grid h-dvh w-screen place-items-center bg-void">
           <div className="h-full w-full overflow-hidden sm:h-[min(844px,calc(100dvh-32px))] sm:w-[392px] sm:border sm:border-white/15">
             <Suspense fallback={null}>
-              <RiderApp key={route} onHome={() => go('landing')} />
+              <RiderApp key={route} tour={route === 'tour'} onHome={() => go('landing')} />
             </Suspense>
           </div>
           <DeviceControls onHome={() => go('landing')} />

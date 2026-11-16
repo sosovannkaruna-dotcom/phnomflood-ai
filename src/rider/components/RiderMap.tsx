@@ -3,7 +3,6 @@ import maplibregl, { type GeoJSONSource, type Map as MlMap, type Marker } from '
 import 'maplibre-gl/dist/maplibre-gl.css'
 import type { Feature, FeatureCollection, LineString, Point } from 'geojson'
 import { RIDER_MAP_STYLE } from '../../shared/mapStyle'
-import { DEPTHS } from '../../lib/severity'
 import type { FloodReport } from '../../shared/types'
 import type { LatLng, MapMode, Passability, Preset, RouteEntry } from '../types'
 import { floodSegment, metresBetween, passability } from '../lib/trip'
@@ -43,13 +42,14 @@ function subPath(path: LatLng[], from: number, to: number): LatLng[] {
   return out
 }
 
-/** Overview: room for the top HUD, the right-edge controls and the bottom sheet. */
-const PADDING = { top: 176, bottom: 292, left: 48, right: 92 }
+/** Overview: room for the top HUD (status bar, banner, one alert), the right-edge controls and the sheet. */
+const PADDING = { top: 210, bottom: 250, left: 44, right: 72 }
+const NO_PADDING = { top: 0, bottom: 0, left: 0, right: 0 }
 /** Navigation camera: tilted, close, heading up, with the rider in the lower part of the screen. */
 const NAV = { zoom: 16.4, pitch: 58 }
 const navPadding = (map: MlMap) => {
   const h = map.getContainer().clientHeight
-  return { top: Math.round(h * 0.46), bottom: 104, left: 24, right: 24 }
+  return { top: Math.round(h * 0.46), bottom: 88, left: 24, right: 24 }
 }
 
 export interface RiderMapHandle {
@@ -74,16 +74,21 @@ interface Props {
   panned: boolean
   onUserPan: () => void
   glideMs: number
+  /** Live mode before a destination is chosen: no route or pins, just the rider */
+  planning?: boolean
+  /** Water at the rider's position: the arrow flashes amber (shallow) or red (deep) */
+  floodAt?: 'caution' | 'danger' | null
+  /** A flood line was tapped (overview only) */
+  onFloodTap?: (reportId: string) => void
 }
 
 const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap(props, ref) {
-  const { preset, active, reports, mode, position, bearing, progress, navigating, panned, glideMs } = props
+  const { preset, active, reports, mode, position, bearing, progress, navigating, panned, glideMs, planning = false, floodAt = null } = props
   const container = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MlMap | null>(null)
   const ready = useRef(false)
   const puck = useRef<{ marker: Marker; el: HTMLElement; at: LatLng } | null>(null)
   const ends = useRef<Marker[]>([])
-  const hazards = useRef<Marker[]>([])
   const latest = useRef(props)
   latest.current = props
   // Trip-change choreography state: which trip is on screen, how much of the route is drawn, whether lines are visible.
@@ -110,7 +115,11 @@ const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap(props, ref)
 
   // ── Draw helpers (read the latest props) ──
   function drawRoutes(map: MlMap) {
-    const { entries, active, recalculating, mode, navigating } = latest.current
+    const { entries, active, recalculating, mode, navigating, planning } = latest.current
+    if (planning) {
+      for (const id of ['alternatives', 'standard', 'traveled', 'active']) (map.getSource(id) as GeoJSONSource).setData(EMPTY)
+      return
+    }
     const standard = entries[0]
     const others = entries.filter((e) => e.candidate.id !== active.candidate.id)
     const { progress: drawn, visible } = flow.current
@@ -143,32 +152,16 @@ const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap(props, ref)
     map.setPaintProperty('standard-line', 'line-opacity', 0.9 * visible)
   }
 
+  /** Floods are drawn only as thin, translucent lines on the roads they cover: no markers, tags or circles. */
   function drawFloods(map: MlMap) {
-    const { reports, mode } = latest.current
+    const { reports } = latest.current
     const segments: Feature<LineString>[] = []
-    const zones: Feature<Point>[] = []
-    hazards.current.forEach((m) => m.remove())
-    hazards.current = []
-
     for (const report of reports) {
-      const depth = DEPTHS[report.depth]
-      const segment = floodSegment(report)
-      if (segment) segments.push({ type: 'Feature', properties: { kind: segment.kind }, geometry: { type: 'LineString', coordinates: segment.coordinates } })
       if (report.depth === 'clear') continue
-      zones.push({ type: 'Feature', properties: { color: depth.color, r: depth.zoneRadius / 190 }, geometry: { type: 'Point', coordinates: [report.lng, report.lat] } })
-
-      // Hazard marker: a triangle for stalling-risk water, a small tag for shallow ponding.
-      const el = document.createElement('div')
-      el.className = `rd-hazard${report.isNew ? ' is-new' : ''}`
-      el.dataset.kind = report.depth === 'ankle' ? 'caution' : 'impassable'
-      el.style.setProperty('--c', depth.color)
-      el.setAttribute('role', 'img')
-      el.setAttribute('aria-label', `${report.name}: about ${report.ai?.depthCm ?? depth.cm} centimetres of water`)
-      el.innerHTML = `<i></i>${mode === 'depth' ? `<span>${report.depth === 'waist' ? '&gt;' : ''}${report.ai?.depthCm ?? depth.cm}<small>cm</small></span>` : ''}`
-      hazards.current.push(new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([report.lng, report.lat]).addTo(map))
+      const segment = floodSegment(report)
+      if (segment) segments.push({ type: 'Feature', properties: { kind: segment.kind, reportId: report.id }, geometry: { type: 'LineString', coordinates: segment.coordinates } })
     }
     ;(map.getSource('segments') as GeoJSONSource).setData(collection(segments))
-    ;(map.getSource('zones') as GeoJSONSource).setData(collection(zones))
   }
 
   /** Start (A) and destination (B) as labelled pins: a letter badge plus the place name. */
@@ -176,6 +169,8 @@ const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap(props, ref)
     const { preset } = latest.current
     const esc = (t: string) => t.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
     ends.current.forEach((m) => m.remove())
+    ends.current = []
+    if (latest.current.planning) return
     ends.current = [
       { point: preset.origin, kind: 'start', letter: 'A', caption: 'Start' },
       { point: preset.destination, kind: 'destination', letter: 'B', caption: 'Destination' },
@@ -230,10 +225,21 @@ const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap(props, ref)
   }
 
   function fit(map: MlMap, animate = true) {
-    const { entries, active } = latest.current
+    const { entries, active, planning, position } = latest.current
+    // The navigation camera leaves a large screen padding on the map (rider low on screen). MapLibre adds
+    // it to any fit, so it must be cleared first, or the fit is taller than the map and silently does nothing.
+    map.setPadding(NO_PADDING)
+    if (planning) {
+      map.easeTo({ center: [position[1], position[0]], zoom: 15, bearing: 0, pitch: 0, padding: NO_PADDING, duration: animate && !prefersReducedMotion() ? 1200 : 0, easing: easeInOutCubic })
+      return
+    }
     const bounds = new maplibregl.LngLatBounds()
     for (const path of [active.candidate.path, entries[0].candidate.path]) for (const [lat, lng] of path) bounds.extend([lng, lat])
-    map.fitBounds(bounds, { padding: PADDING, duration: animate && !prefersReducedMotion() ? 1500 : 0, maxZoom: 15, bearing: 0, easing: easeInOutCubic })
+    // Keep the padding within the map's size on short screens.
+    const h = map.getContainer().clientHeight
+    const room = Math.min(1, (h - 160) / (PADDING.top + PADDING.bottom))
+    const padding = { ...PADDING, top: Math.round(PADDING.top * room), bottom: Math.round(PADDING.bottom * room) }
+    map.fitBounds(bounds, { padding, duration: animate && !prefersReducedMotion() ? 1500 : 0, maxZoom: 15, bearing: 0, pitch: 0, easing: easeInOutCubic })
   }
 
   // ── Create the map once ──
@@ -247,47 +253,46 @@ const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap(props, ref)
       minZoom: 10,
       maxZoom: 18.5,
       maxPitch: 65,
-      attributionControl: { compact: true },
-      dragRotate: false,
-      pitchWithRotate: false,
+      // Credit is shown as text in the expanded sheet, not as a button over the map.
+      attributionControl: false,
+      // Two-finger tilt and rotate, like any map app (rotation pauses the follow camera while navigating).
+      dragRotate: true,
+      pitchWithRotate: true,
+      touchPitch: true,
     })
     mapRef.current = map
     map.on('error', (e) => console.error('[rider map]', e.error?.message ?? e))
     map.on('moveend', () => flipLabels(map))
     // A drag by the rider (not by the camera) pauses following, like any navigation app.
-    map.on('dragstart', (e) => {
-      if (latest.current.navigating && (e as { originalEvent?: Event }).originalEvent) latest.current.onUserPan()
-    })
+    const userMoved = (e: { originalEvent?: Event }) => {
+      if (latest.current.navigating && e.originalEvent) latest.current.onUserPan()
+    }
+    map.on('dragstart', userMoved)
+    map.on('rotatestart', userMoved)
 
     map.on('load', () => {
-      for (const id of ['zones', 'alternatives', 'standard', 'traveled', 'active', 'segments']) map.addSource(id, { type: 'geojson', data: EMPTY })
+      for (const id of ['alternatives', 'standard', 'traveled', 'active', 'segments']) map.addSource(id, { type: 'geojson', data: EMPTY })
       const round = { 'line-cap': 'round', 'line-join': 'round' } as const
       const color = ['get', 'color'] as unknown as string
 
-      map.addLayer({
-        id: 'zone-halo',
-        type: 'circle',
-        source: 'zones',
-        paint: {
-          'circle-color': color,
-          'circle-opacity': 0.14,
-          'circle-stroke-color': color,
-          'circle-stroke-opacity': 0.5,
-          'circle-stroke-width': 1,
-          'circle-pitch-alignment': 'map',
-          // Constant ground size (≈190 m at r = 1) across zoom levels
-          'circle-radius': ['interpolate', ['exponential', 2], ['zoom'], 10, ['*', 2.5, ['get', 'r']], 18, ['*', 640, ['get', 'r']]] as unknown as number,
-        },
-      })
       map.addLayer({ id: 'alt-lines', type: 'line', source: 'alternatives', layout: round, paint: { 'line-color': color, 'line-width': 4, 'line-opacity': 0.7 } })
       map.addLayer({ id: 'standard-line', type: 'line', source: 'standard', layout: round, paint: { 'line-color': color, 'line-width': 3.5, 'line-dasharray': [0.6, 2.2], 'line-opacity': 0.9 } })
       map.addLayer({ id: 'traveled-line', type: 'line', source: 'traveled', layout: round, paint: { 'line-color': color, 'line-width': ['interpolate', ['linear'], ['zoom'], 13, 5, 17, 12] as unknown as number } })
       map.addLayer({ id: 'active-casing', type: 'line', source: 'active', layout: round, paint: { 'line-color': '#0A0A0B', 'line-width': ['interpolate', ['linear'], ['zoom'], 13, 10, 17, 20] as unknown as number } })
       map.addLayer({ id: 'active-line', type: 'line', source: 'active', layout: round, paint: { 'line-color': color, 'line-width': ['interpolate', ['linear'], ['zoom'], 13, 5.5, 17, 13] as unknown as number } })
       // Flood segments sit on top of the roads they cover
-      map.addLayer({ id: 'seg-wet', type: 'line', source: 'segments', filter: ['==', ['get', 'kind'], 'wet'], layout: round, paint: { 'line-color': '#0EA5E9', 'line-width': 4, 'line-dasharray': [1, 1.8] } })
-      map.addLayer({ id: 'seg-caution', type: 'line', source: 'segments', filter: ['==', ['get', 'kind'], 'caution'], layout: round, paint: { 'line-color': '#F59E0B', 'line-width': 8 } })
-      map.addLayer({ id: 'seg-impassable', type: 'line', source: 'segments', filter: ['==', ['get', 'kind'], 'impassable'], layout: round, paint: { 'line-color': '#EF4444', 'line-width': 9 } })
+      // Flood segments: thin and translucent on top of the roads they cover, so they read without shouting.
+      const segWidth = ['interpolate', ['linear'], ['zoom'], 12, 2, 15, 3.5, 18, 6] as unknown as number
+      map.addLayer({ id: 'seg-caution', type: 'line', source: 'segments', filter: ['==', ['get', 'kind'], 'caution'], layout: round, paint: { 'line-color': '#F5B342', 'line-width': segWidth, 'line-opacity': 0.5 } })
+      // A wide invisible line over each flood, so the thin visible one is easy to tap with a thumb.
+      map.addLayer({ id: 'seg-hit', type: 'line', source: 'segments', layout: round, paint: { 'line-color': '#000000', 'line-width': 22, 'line-opacity': 0 } })
+      map.on('click', 'seg-hit', (e) => {
+        const id = e.features?.[0]?.properties?.reportId as string | undefined
+        if (id && !latest.current.navigating) latest.current.onFloodTap?.(id)
+      })
+      map.on('mouseenter', 'seg-hit', () => (map.getCanvas().style.cursor = 'pointer'))
+      map.on('mouseleave', 'seg-hit', () => (map.getCanvas().style.cursor = ''))
+      map.addLayer({ id: 'seg-impassable', type: 'line', source: 'segments', filter: ['==', ['get', 'kind'], 'impassable'], layout: round, paint: { 'line-color': '#F05252', 'line-width': segWidth, 'line-opacity': 0.55 } })
 
       // Rider puck: a dot with a heading cone in the overview, a flat arrow on the road while navigating.
       // It is aligned to the map, so it turns and tilts with the street.
@@ -448,7 +453,7 @@ const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap(props, ref)
       cancelAnimationFrame(n.frame)
       flow.current.progress = 1
       drawRoutes(map)
-      map.easeTo({ pitch: 0, bearing: 0, duration: calm ? 0 : 700, easing: easeInOutCubic })
+      map.easeTo({ pitch: 0, bearing: 0, padding: NO_PADDING, duration: calm ? 0 : 700, easing: easeInOutCubic })
       const t = window.setTimeout(() => fit(map), calm ? 0 : 720)
       return () => window.clearTimeout(t)
     }
@@ -481,6 +486,29 @@ const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap(props, ref)
     return () => cancelAnimationFrame(n.frame)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigating])
+
+  // Riding through water: the arrow flashes amber or red until the rider is out of it.
+  useEffect(() => {
+    const p = puck.current
+    if (!p) return
+    if (floodAt) p.el.dataset.flood = floodAt
+    else delete p.el.dataset.flood
+  }, [floodAt])
+
+  // Live: the GPS fix arrives after the map loads; centre on it while there is no route yet
+  // (again only if the fix jumps far, e.g. from the city-centre stand-in to the real position).
+  const centredOn = useRef<LatLng | null>(null)
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !ready.current || !planning) {
+      if (!planning) centredOn.current = null
+      return
+    }
+    if (centredOn.current && metresBetween(centredOn.current, position) < 500) return
+    centredOn.current = position
+    fit(map)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planning, position])
 
   // Re-centred after a drag: fly back behind the rider.
   useEffect(() => {

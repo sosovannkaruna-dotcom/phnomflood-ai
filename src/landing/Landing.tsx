@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { Suspense, lazy, useEffect, useRef, useState } from 'react'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
@@ -8,8 +8,11 @@ import { DEPTHS, VEHICLES } from '../lib/severity'
 
 gsap.registerPlugin(ScrollTrigger, useGSAP)
 
+// The live map hero loads after first paint (MapLibre and the route data are large); the photo shows until then.
+const HeroMap = lazy(() => import('./HeroMap'))
+
 interface Props {
-  onOpen: (route: 'demo' | 'live') => void
+  onOpen: (route: 'demo' | 'live' | 'tour') => void
 }
 
 // Real streets from the app's routing data
@@ -198,14 +201,28 @@ export default function Landing({ onOpen }: Props) {
             </h1>
             <p className="hero-fade mt-8 max-w-[36ch] text-lg leading-relaxed text-zinc-300">Flood-aware routes for riders in Phnom Penh. Report water in two taps and everyone nearby sees it.</p>
             <div className="hero-fade mt-10 flex flex-wrap items-center gap-3">
-              <PrimaryButton onClick={() => onOpen('demo')}>Try the demo</PrimaryButton>
-              <GhostButton onClick={() => onOpen('live')}>Open live app</GhostButton>
+              <PrimaryButton onClick={() => onOpen('tour')}>Watch it work</PrimaryButton>
+              <GhostButton onClick={() => onOpen('demo')}>Try the demo</GhostButton>
             </div>
           </div>
           <div className="lg:col-span-5">
-            <div className="hero-photo ln-halftone-wrap aspect-[4/5] w-full border border-white/15">
-              <img src="/scenarios/waist-deep-flood.jpg" alt="A rider pushing a stalled motorbike through floodwater up to the seat" className="ln-halftone h-full w-full object-cover" {...{ fetchpriority: 'high' }} />
+            <div className="hero-photo aspect-[4/5] w-full border border-white/15 bg-void">
+              <Suspense
+                fallback={
+                  <div className="ln-halftone-wrap h-full w-full">
+                    <img src="/scenarios/waist-deep-flood.jpg" alt="" className="ln-halftone h-full w-full object-cover" {...{ fetchpriority: 'high' }} />
+                  </div>
+                }
+              >
+                <HeroMap onOpen={() => onOpen('demo')} />
+              </Suspense>
             </div>
+            <p className="hero-fade mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-400">
+              <span className="flex items-center gap-1.5"><span className="h-0.5 w-4 bg-emerald-500" aria-hidden /> Dry route</span>
+              <span className="flex items-center gap-1.5"><span className="h-0.5 w-4 border-t-2 border-dashed border-red-400" aria-hidden /> Usual map route</span>
+              <span className="flex items-center gap-1.5"><span className="h-0.5 w-4 bg-amber-400" aria-hidden /> Reported flooding</span>
+              <span className="text-zinc-500">Map © OpenStreetMap contributors, OpenFreeMap</span>
+            </p>
           </div>
         </section>
 

@@ -10,6 +10,8 @@ export interface Candidate {
   typicalMinutes: number
   distanceM: number
   path: LatLng[]
+  /** Turn list for routes fetched at runtime (live mode); pre-computed routes look theirs up by id */
+  maneuvers?: Maneuver[]
 }
 
 export interface Endpoint {
@@ -33,6 +35,8 @@ export interface RouteEntry {
   minutes: number
   blockers: FloodReport[]
   cautions: FloodReport[]
+  /** Deepest water anywhere on the route, depth rank 0 (dry) to 3 (waist) */
+  worst: number
 }
 
 export type Passability = 'dry' | 'caution' | 'blocked'

@@ -27,10 +27,14 @@ interface Props {
   quiet?: boolean
   speedFactor: number
   onHome: () => void
+  /** Live mode with no destination yet: no turn banner */
+  planning?: boolean
+  /** Urgent riding alert (in water, heading into water), shown above other notices */
+  alert?: { id: string; text: string; color: string } | null
 }
 
 /** Status strip, the turn-by-turn and hazard banner, and the rain alert. */
-export default function TopHud({ trip, place, mode, sync, weather, riding, navigating = false, quiet = false, speedFactor, onHome }: Props) {
+export default function TopHud({ trip, place, mode, sync, weather, riding, navigating = false, quiet = false, speedFactor, onHome, planning = false, alert = null }: Props) {
   const { t, lang, setLang } = useT()
   const { active, recalculating, notice, fraction, vehicle } = trip
   const { step, metres: distance } = nextManeuver(active.candidate, fraction)
@@ -69,7 +73,7 @@ export default function TopHud({ trip, place, mode, sync, weather, riding, navig
       ) : (
         <>
       {/* Status strip: one hairline-divided slab */}
-      <div className="cc-panel pointer-events-auto flex h-11 items-stretch divide-x divide-white/[0.12]">
+      <div className="cc-panel pointer-events-auto flex h-10 items-stretch divide-x divide-white/[0.12]">
         <button onClick={onHome} aria-label={t('hud.home')} title={t('hud.home')} className="cc-btn flex shrink-0 items-center gap-2 px-3">
           <svg viewBox="0 0 20 20" className="h-5 w-5 shrink-0" aria-hidden>
             <path d="M10 1 19 10 10 19 1 10Z" fill="none" stroke="#E8301C" strokeWidth="1.75" />
@@ -99,11 +103,11 @@ export default function TopHud({ trip, place, mode, sync, weather, riding, navig
       </div>
 
       {/* Turn-by-turn + hazard banner: status colour runs down the left edge */}
-      <div className="pointer-events-auto flex border border-white/[0.12] bg-void/95" aria-live="polite">
+      {!planning && <div className="pointer-events-auto flex border border-white/[0.12] bg-void/95" aria-live="polite">
         <span className="w-1.5 shrink-0 transition-colors duration-300" style={{ background: barColor }} />
-        <div className="min-w-0 flex-1 px-3 py-3">
+        <div className="min-w-0 flex-1 px-3 py-2">
           {recalculating ? (
-            <div className="flex min-h-[52px] items-center gap-3">
+            <div className="flex min-h-[44px] items-center gap-3">
               <Loader2 className="h-7 w-7 shrink-0 animate-spin text-caution" />
               <div className="min-w-0 flex-1 space-y-2">
                 <p className="text-sm font-semibold leading-tight text-amber-400">{t('hud.recalc', { vehicle: t(`noun.${vehicle}`) })}</p>
@@ -111,10 +115,10 @@ export default function TopHud({ trip, place, mode, sync, weather, riding, navig
               </div>
             </div>
           ) : (
-            <div className="flex min-h-[52px] items-center gap-3">
-              <Turn className="h-9 w-9 shrink-0 text-zinc-50" />
+            <div className="flex min-h-[44px] items-center gap-3">
+              <Turn className="h-7 w-7 shrink-0 text-zinc-50" />
               <div className="min-w-0 flex-1">
-                <p className="tl-title text-3xl leading-none text-zinc-50 tabular-nums">{metres(distance)}</p>
+                <p className="tl-title text-2xl leading-none text-zinc-50 tabular-nums">{metres(distance)}</p>
                 <p className="mt-1.5 truncate text-sm text-zinc-300">
                   <span className="font-medium text-zinc-100">{step.street}</span>
                   {step.toward && (
@@ -125,18 +129,32 @@ export default function TopHud({ trip, place, mode, sync, weather, riding, navig
                   )}
                 </p>
               </div>
-              <span className="tl-label shrink-0 border px-2 py-1" style={{ color: badge.color, borderColor: `${badge.color}88` }}>
+              <span className="tl-label shrink-0" style={{ color: badge.color }}>
                 {badge.text}
               </span>
             </div>
           )}
         </div>
-      </div>
+      </div>}
 
         </>
       )}
 
       <AnimatePresence>
+        {alert && !quiet && (
+          <motion.p
+            key={`alert-${alert.id}`}
+            role="alert"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ type: 'spring', stiffness: 420, damping: 30 }}
+            className="pointer-events-auto border-l-4 bg-void/95 px-3 py-2.5 text-sm font-semibold"
+            style={{ borderColor: alert.color, color: alert.color }}
+          >
+            {alert.text}
+          </motion.p>
+        )}
         {noticeText && !quiet && (
           <motion.p
             key="notice"

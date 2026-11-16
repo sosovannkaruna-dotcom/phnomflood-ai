@@ -37,10 +37,12 @@ interface Props {
   position: LatLng
   onClose: () => void
   onSubmit: (report: { depth: ReportDepth; ai: VisionResult | null; photo: string | null }) => void
+  /** Guided tour: pick "knee", add the stalled-bike photo, let the AI correct it, then submit */
+  autoplay?: boolean
 }
 
 /** Two-tap field report: the shallowest depth is preselected, so Report → Submit works without another choice. */
-export default function ReportDrawer({ place, position, onClose, onSubmit }: Props) {
+export default function ReportDrawer({ place, position, onClose, onSubmit, autoplay = false }: Props) {
   const { t } = useT()
   const mode = useMode()
   const [claimed, setClaimed] = useState<ReportDepth>('ankle')
@@ -78,10 +80,34 @@ export default function ReportDrawer({ place, position, onClose, onSubmit }: Pro
     setScanning(false)
   }
 
+  // Guided tour: the same taps a rider would make, paced so a viewer can follow each one.
+  // (The photo step reads the latest `verify`, so it sends the depth picked a moment earlier.)
+  const verifyLatest = useRef(verify)
+  verifyLatest.current = verify
+  useEffect(() => {
+    if (!autoplay) return
+    const bike = scenarios.find((s) => s.id === 'waist')
+    const timers = [
+      window.setTimeout(() => setClaimed('knee'), 900),
+      window.setTimeout(() => setCamera(true), 1800),
+      window.setTimeout(() => bike && void verifyLatest.current({ url: bike.image, credit: bike.credit }, { scenarioId: bike.id }), 2900),
+    ]
+    return () => timers.forEach((t) => window.clearTimeout(t))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoplay])
+
   const verified = ai?.status === 'verified'
   const rejected = ai?.status === 'rejected'
   const depth: ReportDepth = verified && ai.depth ? ai.depth : claimed
   const canSubmit = !scanning && !rejected
+
+  // Guided tour: once the AI verdict has been on screen long enough to read, submit.
+  useEffect(() => {
+    if (!autoplay || !ai) return
+    const timer = window.setTimeout(() => onSubmit({ depth: verified && ai.depth ? ai.depth : claimed, ai: verified ? ai : null, photo: photo?.url ?? null }), 3800)
+    return () => window.clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoplay, ai])
   const depthLabel = (d: ReportDepth) => t(`depth.${d}` as Key)
   const unavailableText = ai?.code === 'not_configured' ? t('ai.notConfigured') : ai?.code === 'demo_upload' ? t('ai.demoUpload') : t('ai.failed')
 

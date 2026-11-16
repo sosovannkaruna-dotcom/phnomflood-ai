@@ -27,18 +27,18 @@ export default function NavBar({ trip, onReport, onExit }: Props) {
   const arrival = new Date(now + minutesLeft * 60_000).toLocaleTimeString(lang === 'km' ? 'km-KH' : 'en-GB', { hour: '2-digit', minute: '2-digit' })
 
   return (
-    <div className="pb-safe absolute inset-x-0 bottom-0 z-20 border-t border-white/[0.15] bg-void/95 backdrop-blur-md">
-      <div className="flex items-stretch gap-2 p-3">
-        <button onClick={onExit} aria-label={t('nav.exit')} title={t('nav.exit')} className="rd-press grid h-14 w-14 shrink-0 place-items-center border border-white/25 text-zinc-50">
+    <div data-bottom-panel className="pb-safe absolute inset-x-0 bottom-0 z-20 border-t border-white/[0.15] bg-void/95 backdrop-blur-md">
+      <div className="flex items-stretch gap-2 p-2.5">
+        <button onClick={onExit} aria-label={t('nav.exit')} title={t('nav.exit')} className="rd-press grid h-12 w-12 shrink-0 place-items-center border border-white/25 text-zinc-50">
           <X className="h-6 w-6" />
         </button>
         <div className="min-w-0 flex-1 text-center">
-          <p className="tl-title text-3xl leading-none text-emerald-400 tabular-nums">{t('sheet.min', { n: minutesLeft })}</p>
+          <p className="tl-title text-2xl leading-none text-emerald-400 tabular-nums">{t('sheet.min', { n: minutesLeft })}</p>
           <p className="mt-1 font-mono text-sm text-zinc-300">
             {km} · {t('nav.arrival', { time: arrival })}
           </p>
         </div>
-        <button onClick={onReport} aria-label={t('sheet.report')} title={t('sheet.report')} className="rd-press grid h-14 w-14 shrink-0 place-items-center bg-signal text-zinc-50">
+        <button onClick={onReport} aria-label={t('sheet.report')} title={t('sheet.report')} className="rd-press grid h-12 w-12 shrink-0 place-items-center bg-signal text-zinc-50">
           <Warning className="h-6 w-6" />
         </button>
       </div>

@@ -6,7 +6,8 @@ import type { Trip } from '../hooks/useTrip'
 
 interface Props {
   trip: Trip
-  speedFactor: number
+  /** Demo: how much faster than real time the ride ran (null for a real, live ride) */
+  speedFactor: number | null
   onAgain: () => void
   onDone: () => void
 }
@@ -28,7 +29,7 @@ export default function ArrivalCard({ trip, speedFactor, onAgain, onDone }: Prop
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={reduce ? { opacity: 0 } : { opacity: 0, y: 16 }}
       transition={{ type: 'spring', duration: 0.45, bounce: 0.15 }}
-      className="absolute inset-x-3 bottom-[calc(232px+env(safe-area-inset-bottom,0px))] z-20 border border-white/[0.15] bg-void"
+      className="absolute inset-x-3 bottom-[calc(200px+env(safe-area-inset-bottom,0px))] z-20 border border-white/[0.15] bg-void"
     >
       <div className="tl-stripe" aria-hidden />
       <div className="p-4">
@@ -52,7 +53,7 @@ export default function ArrivalCard({ trip, speedFactor, onAgain, onDone }: Prop
             <dd className={`tl-title mt-1 text-lg ${deepest ? 'text-amber-400' : 'text-zinc-50'}`}>{deepest ? `${deepest} cm` : t('arrive.none')}</dd>
           </div>
         </dl>
-        <p className="mt-2 text-[11px] text-zinc-500">{t('arrive.simNote', { x: speedFactor })}</p>
+        {speedFactor !== null && <p className="mt-2 text-[11px] text-zinc-500">{t('arrive.simNote', { x: speedFactor })}</p>}
         <div className="mt-3 grid grid-cols-2 gap-2">
           <button onClick={onAgain} className="rd-press flex h-12 items-center justify-center gap-2 border border-white/25 text-sm font-semibold text-zinc-50">
             <ArrowCounterClockwise className="h-4 w-4" /> {t('arrive.again')}

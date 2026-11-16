@@ -25,20 +25,20 @@ export default function NavBanner({ trip }: { trip: Trip }) {
   return (
     <div className="pointer-events-auto overflow-hidden shadow-[0_8px_24px_rgba(0,0,0,0.45)] transition-colors duration-300" style={{ background: recalculating ? BANNER_BG.recalc : BANNER_BG[status] }} aria-live="polite">
       {recalculating ? (
-        <div className="flex min-h-[96px] items-center gap-4 px-4 py-4">
-          <CircleNotch className="h-10 w-10 shrink-0 animate-spin text-amber-200" />
-          <p className="text-lg font-semibold leading-snug text-zinc-50">{t('hud.recalc', { vehicle: t(`noun.${vehicle}`) })}</p>
+        <div className="flex min-h-[72px] items-center gap-3 px-3.5 py-3">
+          <CircleNotch className="h-8 w-8 shrink-0 animate-spin text-amber-200" />
+          <p className="text-base font-semibold leading-snug text-zinc-50">{t('hud.recalc', { vehicle: t(`noun.${vehicle}`) })}</p>
         </div>
       ) : (
-        <div className="flex min-h-[96px] items-center gap-4 px-4 py-4">
-          <Turn className="h-12 w-12 shrink-0 text-zinc-50" />
+        <div className="flex min-h-[72px] items-center gap-3 px-3.5 py-3">
+          <Turn className="h-9 w-9 shrink-0 text-zinc-50" />
           <div className="min-w-0 flex-1">
-            <p className="tl-title text-4xl leading-none text-zinc-50 tabular-nums">{metres(distance)}</p>
-            <p className="mt-1.5 line-clamp-2 text-lg font-semibold leading-tight text-zinc-50">{step.street}</p>
+            <p className="tl-title text-3xl leading-none text-zinc-50 tabular-nums">{metres(distance)}</p>
+            <p className="mt-1 line-clamp-2 text-base font-semibold leading-tight text-zinc-50">{step.street}</p>
           </div>
         </div>
       )}
-      <div className="flex items-center justify-between gap-3 bg-black/25 px-4 py-2">
+      <div className="flex items-center justify-between gap-3 bg-black/25 px-3.5 py-1.5">
         {then && Then && !recalculating ? (
           <span className="flex min-w-0 items-center gap-2 text-sm text-zinc-100">
             <span className="font-semibold">{t('nav.then')}</span>

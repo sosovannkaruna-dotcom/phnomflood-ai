@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Motorcycle as Bike, Car, Taxi as CarTaxiFront, Check, MagnifyingGlass as Search, NavigationArrow, ShieldCheck, Stop, Warning as TriangleAlert, X } from '@phosphor-icons/react'
 import { DEPTHS } from '../../lib/severity'
@@ -8,7 +8,9 @@ import type { FloodReport, SyncState } from '../../shared/types'
 import type { LatLng, RouteEntry, VehicleId } from '../types'
 import type { Trip } from '../hooks/useTrip'
 import type { RideStatus } from '../hooks/useRide'
-import { PRESETS, metresBetween, passability, routeLengthKm } from '../lib/trip'
+import { clearsIn, floodsOnRoute, metresBetween, passability, routeLengthKm, routeSteps } from '../lib/trip'
+import type { RouteStatus } from '../hooks/useLive'
+import { drainText } from '../lib/format'
 
 const VEHICLES: { id: VehicleId; Icon: typeof Bike }[] = [
   { id: 'moto', Icon: Bike },
@@ -29,10 +31,20 @@ interface Props {
   onReport: () => void
   onConfirm: (id: string) => void
   onClear: (id: string) => void
+  /** Rain falling now, mm/h (for the drain estimate) */
+  rainNow?: number
+  /** Live mode: search any place instead of the demo's trip list */
+  live?: {
+    origin: string
+    destination: string | null
+    status: RouteStatus
+    note: string | null
+    renderSearch: (close: () => void) => ReactNode
+  }
 }
 
 /** Two-detent sheet: riding view when collapsed, route comparison and nearby alerts when expanded. */
-export default function BottomSheet({ trip, reports, position, mode, sync, ride, onStartRide, onStopRide, onReport, onConfirm, onClear }: Props) {
+export default function BottomSheet({ trip, reports, position, mode, sync, ride, onStartRide, onStopRide, onReport, onConfirm, onClear, live, rainNow = 0 }: Props) {
   const { t } = useT()
   const [expanded, setExpanded] = useState(false)
   const [searching, setSearching] = useState(false)
@@ -47,7 +59,8 @@ export default function BottomSheet({ trip, reports, position, mode, sync, ride,
     entry.blockers.length ? t('exposure.blocked', { n: entry.blockers.length }) : entry.cautions.length ? t('exposure.caution', { n: entry.cautions.length }) : t('exposure.dry')
   const syncKey: Key = mode === 'demo' ? 'sync.demo' : (`sync.${sync}` as Key)
 
-  const matches = PRESETS.filter((p) => `${p.label} ${p.destination.name} ${p.origin.name}`.toLowerCase().includes(query.toLowerCase()))
+  const hasRoute = !live || (live.status === 'ready' && !!live.destination)
+  const matches = trip.presets.filter((p) => `${p.label} ${p.destination.name} ${p.origin.name}`.toLowerCase().includes(query.toLowerCase()))
   const nearby = reports
     .filter((r) => r.depth !== 'clear')
     .map((r) => ({ report: r, metres: metresBetween(position, [r.lat, r.lng]) }))
@@ -55,7 +68,7 @@ export default function BottomSheet({ trip, reports, position, mode, sync, ride,
     .sort((a, b) => a.metres - b.metres)
 
   return (
-    <div className="pb-safe absolute inset-x-0 bottom-0 z-20 border-t border-white/[0.15] bg-void/95 backdrop-blur-md">
+    <div data-bottom-panel className="pb-safe absolute inset-x-0 bottom-0 z-20 border-t border-white/[0.15] bg-void/95 backdrop-blur-md">
       {/* Drag handle: drag or tap to change detent */}
       <motion.button
         onClick={() => setExpanded((e) => !e)}
@@ -71,7 +84,9 @@ export default function BottomSheet({ trip, reports, position, mode, sync, ride,
       </motion.button>
 
       <div className="space-y-2 px-3 pb-3">
-        {searching ? (
+        {searching && live ? (
+          live.renderSearch(() => setSearching(false))
+        ) : searching ? (
           /* Destination picker */
           <div className="space-y-2">
             <div className="flex h-12 items-center gap-2 border border-signal bg-slab px-3">
@@ -113,37 +128,74 @@ export default function BottomSheet({ trip, reports, position, mode, sync, ride,
         ) : (
           <>
             {/* Destination: a labelled readout, tap to change */}
-            <button onClick={() => setSearching(true)} className="rd-press flex h-14 w-full items-stretch border border-white/[0.15] bg-slab text-left">
+            <button onClick={() => setSearching(true)} className="rd-press flex h-12 w-full items-stretch border border-white/[0.15] bg-slab text-left">
               <span className="grid w-12 shrink-0 place-items-center border-r border-white/[0.12] text-zinc-400">
                 <Search className="h-5 w-5" />
               </span>
               <span className="flex min-w-0 flex-1 flex-col justify-center px-3">
-                <span className="tl-label truncate">{t('sheet.from', { origin: preset.origin.short })}</span>
-                <span className="tl-title truncate text-base text-zinc-50">{preset.destination.short}</span>
+                <span className="tl-label truncate">{t('sheet.from', { origin: live ? live.origin : preset.origin.short })}</span>
+                <span className={`tl-title truncate text-base ${live && !live.destination ? 'text-zinc-400' : 'text-zinc-50'}`}>{live ? (live.destination ?? t('live.whereTo')) : preset.destination.short}</span>
               </span>
               <span className="flex shrink-0 flex-col items-end justify-center border-l border-white/[0.12] px-3">
                 <span className="tl-label">{t('sheet.eta')}</span>
-                <span className="font-mono text-base text-zinc-50">{t('sheet.min', { n: active.minutes })}</span>
+                <span className="font-mono text-base text-zinc-50">{live?.status === 'routing' ? '…' : hasRoute ? t('sheet.min', { n: active.minutes }) : '–'}</span>
               </span>
             </button>
+
+            {/* Before Start: the usual map route next to ours, so the difference is plain in five seconds */}
+            {hasRoute && ride === 'idle' && trip.standard.candidate.id !== active.candidate.id && trip.standard.worst > active.worst && (
+              <button onClick={() => setExpanded(true)} className="rd-press grid w-full grid-cols-2 gap-px border border-white/[0.12] bg-white/[0.12] text-left">
+                {[
+                  { label: t('compare.usual'), entry: trip.standard, ours: false },
+                  { label: t('compare.ours'), entry: active, ours: true },
+                ].map(({ label, entry, ours }) => {
+                  const floods = floodsOnRoute(entry.candidate, reports)
+                  const deepest = Math.max(0, ...floods.map((f) => f.report.ai?.depthCm ?? DEPTHS[f.report.depth].cm))
+                  const deep = floods.some((f) => DEPTHS[f.report.depth].rank >= 2)
+                  return (
+                    <span key={label} className={`flex min-w-0 flex-col px-2.5 py-1.5 ${ours ? 'bg-emerald-500/[0.08]' : 'bg-void'}`}>
+                      <span className="tl-label truncate">{label}</span>
+                      <span className="mt-0.5 flex items-baseline gap-1.5 text-xs">
+                        <span className="shrink-0 whitespace-nowrap font-mono text-zinc-50">{t('sheet.min', { n: entry.minutes })}</span>
+                        <span className={`truncate ${floods.length ? (deep ? 'text-red-400' : 'text-amber-400') : 'text-emerald-400'}`}>
+                          {floods.length ? t('compare.floods', { n: floods.length, cm: deepest }) : t('compare.dry')}
+                        </span>
+                      </span>
+                    </span>
+                  )
+                })}
+              </button>
+            )}
+
+            {/* Route brief before Start: the roads this route takes */}
+            {hasRoute && ride === 'idle' && (
+              <button onClick={() => setExpanded(true)} className="rd-press flex w-full items-baseline gap-2 text-left text-xs text-zinc-400">
+                <span className="shrink-0 font-mono text-zinc-300">{routeLengthKm(active.candidate)} km</span>
+                <span className="truncate">
+                  {t('sheet.via')} {active.candidate.via}
+                </span>
+              </button>
+            )}
+
+            {live?.note && <p className={`text-xs ${live.status === 'error' ? 'text-red-400' : 'text-zinc-400'}`}>{live.note}</p>}
 
             {/* Route filters: one hairline-divided row */}
             <div className="rd-noscroll flex divide-x divide-white/[0.12] overflow-x-auto border border-white/[0.15]" role="group" aria-label="Route filters">
               <button
                 onClick={trip.toggleDryOnly}
                 aria-pressed={dryOnly}
-                className={`rd-press flex h-12 shrink-0 items-center gap-2 px-3 text-sm font-medium ${dryOnly ? 'bg-emerald-500/15 text-emerald-400' : 'text-zinc-300'}`}
+                className={`rd-press flex h-10 shrink-0 items-center gap-1.5 px-2.5 text-[13px] font-medium ${dryOnly ? 'bg-emerald-500/15 text-emerald-400' : 'text-zinc-300'}`}
               >
-                <ShieldCheck className="h-5 w-5" /> {t('sheet.dryOnly')}
+                <ShieldCheck className="h-4 w-4" /> {t('sheet.dryOnly')}
               </button>
               {VEHICLES.map(({ id, Icon }) => (
                 <button
                   key={id}
                   onClick={() => trip.setVehicle(id)}
                   aria-pressed={vehicle === id}
-                  className={`rd-press flex h-12 shrink-0 items-center gap-2 px-3 text-sm font-medium ${vehicle === id ? 'bg-signal text-zinc-50' : 'text-zinc-300'}`}
+                  className={`rd-press flex h-10 shrink-0 items-center gap-1.5 px-2.5 text-[13px] font-medium ${vehicle === id ? 'bg-signal text-zinc-50' : 'text-zinc-300'}`}
                 >
-                  <Icon className="h-5 w-5" /> {t(`vehicle.${id}` as Key)}
+                  <Icon className="h-4 w-4" /> {t(`vehicle.${id}` as Key)}
                 </button>
               ))}
             </div>
@@ -151,15 +203,19 @@ export default function BottomSheet({ trip, reports, position, mode, sync, ride,
             {/* Ride and report: two big targets, report is the hazard-red primary */}
             <div className="grid grid-cols-[1fr_1.35fr] gap-2">
               {ride === 'riding' ? (
-                <button onClick={onStopRide} className="rd-press flex h-14 items-center justify-center gap-2 border border-white/25 bg-slab text-base font-semibold text-zinc-50">
+                <button onClick={onStopRide} className="rd-press flex h-12 items-center justify-center gap-2 border border-white/25 bg-slab text-sm font-semibold text-zinc-50">
                   <Stop className="h-5 w-5" /> {t('sheet.stop')}
                 </button>
               ) : (
-                <button onClick={onStartRide} className="rd-press flex h-14 items-center justify-center gap-2 bg-zinc-100 text-base font-semibold text-zinc-950">
+                <button
+                  onClick={hasRoute ? onStartRide : () => setSearching(true)}
+                  title={hasRoute ? undefined : t('live.pickFirst')}
+                  className={`rd-press flex h-12 items-center justify-center gap-2 text-sm font-semibold ${hasRoute ? 'bg-zinc-100 text-zinc-950' : 'border border-white/25 bg-slab text-zinc-400'}`}
+                >
                   <NavigationArrow className="h-5 w-5" /> {t('sheet.start')}
                 </button>
               )}
-              <button onClick={onReport} className="tl-cta h-14 text-base">
+              <button onClick={onReport} className="tl-cta h-12 text-sm">
                 <span>
                   <TriangleAlert className="h-5 w-5" /> {t('sheet.report')}
                 </span>
@@ -181,7 +237,23 @@ export default function BottomSheet({ trip, reports, position, mode, sync, ride,
             className="overflow-hidden"
           >
             <div className="cc-scroll max-h-[38dvh] space-y-5 overflow-y-auto overflow-x-hidden border-t border-white/[0.12] px-3 py-4">
-              <section>
+              {hasRoute && (
+                <section>
+                  <h3 className="tl-label pb-2">{t('sheet.directions')}</h3>
+                  <ol className="tl-grid border border-white/[0.12]">
+                    {routeSteps(active.candidate).map((step, i) => (
+                      <li key={i} className="flex items-baseline gap-3 px-3 py-2 text-sm">
+                        <span className="w-14 shrink-0 font-mono text-xs text-zinc-400">{step.km}</span>
+                        <span className="min-w-0 flex-1 truncate text-zinc-100">
+                          {t(`turn.${step.turn}` as Key)} {step.street}
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+                </section>
+              )}
+
+              {hasRoute && <section>
                 <h3 className="tl-label pb-2">{t('sheet.routes')}</h3>
                 <ul className="tl-grid border border-white/[0.12]">
                   {entries.map((entry, i) => {
@@ -221,7 +293,7 @@ export default function BottomSheet({ trip, reports, position, mode, sync, ride,
                     )
                   })}
                 </ul>
-              </section>
+              </section>}
 
               <section>
                 <div className="flex items-baseline justify-between gap-2 pb-2">
@@ -247,6 +319,7 @@ export default function BottomSheet({ trip, reports, position, mode, sync, ride,
                             {report.confirmations ? ` · ${t('sheet.confirmed', { n: report.confirmations })}` : ''}
                           </span>
                         </p>
+                        <p className="mt-0.5 text-xs text-zinc-400">{drainText(t, clearsIn(report, rainNow))}</p>
                         <div className="tl-grid mt-3 grid-cols-2 border border-white/[0.12]">
                           <button onClick={() => onConfirm(report.id)} className="rd-press h-12 text-sm font-medium text-zinc-100">
                             {t('sheet.still')}
@@ -260,6 +333,8 @@ export default function BottomSheet({ trip, reports, position, mode, sync, ride,
                   })}
                 </ul>
               </section>
+
+              <p className="text-[11px] text-zinc-500">Map data © OpenStreetMap contributors · Map tiles: OpenFreeMap</p>
             </div>
           </motion.div>
         )}

@@ -285,6 +285,71 @@ body::after {
 .rd-puck[data-nav] .puck-arrow {
   display: inline;
 }
+/* Riding through water: the arrow (and dot) pulse in the flood's colour, with a glow on the road. */
+.rd-puck[data-flood] {
+  --flood: #f59e0b;
+}
+.rd-puck[data-flood='danger'] {
+  --flood: #ef4444;
+}
+.rd-puck[data-flood] > svg {
+  overflow: visible;
+  animation: rd-flood-glow 900ms ease-in-out infinite;
+}
+.rd-puck[data-flood] .puck-arrow path,
+.rd-puck[data-flood] .puck-dot circle:last-of-type {
+  animation: rd-flood-fill 900ms ease-in-out infinite;
+}
+@keyframes rd-flood-fill {
+  0%,
+  100% {
+    fill: #f4f4f5;
+  }
+  50% {
+    fill: var(--flood);
+  }
+}
+@keyframes rd-flood-glow {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 0 transparent);
+  }
+  50% {
+    filter: drop-shadow(0 0 10px var(--flood)) drop-shadow(0 0 22px var(--flood));
+  }
+}
+/* A soft edge flash on the whole screen while in water. */
+.rd-flood-edge {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  box-shadow: inset 0 0 0 0 transparent;
+  animation: rd-flood-edge 900ms ease-in-out infinite;
+}
+@keyframes rd-flood-edge {
+  0%,
+  100% {
+    box-shadow: inset 0 0 0 0 transparent;
+  }
+  50% {
+    box-shadow: inset 0 0 70px 6px var(--flood);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rd-puck[data-flood] > svg,
+  .rd-puck[data-flood] .puck-arrow path,
+  .rd-puck[data-flood] .puck-dot circle:last-of-type,
+  .rd-flood-edge {
+    animation: none;
+  }
+  .rd-puck[data-flood] .puck-arrow path {
+    fill: var(--flood);
+  }
+  .rd-flood-edge {
+    box-shadow: inset 0 0 50px 4px var(--flood);
+  }
+}
 
 /* Trip endpoints: lettered badge on the point, name label to its right.
    Start is a dark label on a round badge; destination is a light label on a square badge. */
