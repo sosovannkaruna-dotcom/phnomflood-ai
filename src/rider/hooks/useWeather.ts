@@ -13,6 +13,13 @@ export interface Weather {
   chance: number
   heavy: boolean
   observedAt: string | null
+  /** Live only: rain in 15-minute steps for the next six hours (start time, mm/h) */
+  series?: RainSlot[]
+}
+
+export interface RainSlot {
+  at: number
+  mmh: number
 }
 
 export type WeatherState = { status: 'loading' } | { status: 'ready'; weather: Weather } | { status: 'error' }

@@ -80,6 +80,8 @@ interface Props {
   floodAt?: 'caution' | 'danger' | null
   /** A flood line was tapped (overview only) */
   onFloodTap?: (reportId: string) => void
+  /** Live, heavy rain: places that flooded on two or more days (predicted, drawn apart from reports) */
+  hotspots?: { lat: number; lng: number; days: number; deep: number }[]
 }
 
 const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap(props, ref) {
@@ -242,6 +244,13 @@ const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap(props, ref)
     map.fitBounds(bounds, { padding, duration: animate && !prefersReducedMotion() ? 1500 : 0, maxZoom: 15, bearing: 0, pitch: 0, easing: easeInOutCubic })
   }
 
+  function drawHotspots(map: maplibregl.Map) {
+    const spots = latest.current.hotspots ?? []
+    ;(map.getSource('hotspots') as GeoJSONSource | undefined)?.setData(
+      collection(spots.map((s) => ({ type: 'Feature', properties: { days: s.days, deep: s.deep }, geometry: { type: 'Point', coordinates: [s.lng, s.lat] } }))),
+    )
+  }
+
   // ── Create the map once ──
   useEffect(() => {
     const start = latest.current.position
@@ -271,9 +280,27 @@ const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap(props, ref)
     map.on('rotatestart', userMoved)
 
     map.on('load', () => {
-      for (const id of ['alternatives', 'standard', 'traveled', 'active', 'segments']) map.addSource(id, { type: 'geojson', data: EMPTY })
+      for (const id of ['alternatives', 'standard', 'traveled', 'active', 'segments', 'hotspots']) map.addSource(id, { type: 'geojson', data: EMPTY })
       const round = { 'line-cap': 'round', 'line-join': 'round' } as const
       const color = ['get', 'color'] as unknown as string
+
+      // Flood-prone spots: a soft water-blue disc under everything else, so predicted water never
+      // reads like a report. Larger where it has flooded on more days.
+      const spotRadius = ['interpolate', ['exponential', 2], ['zoom'], 11, ['+', 4, ['*', 0.6, ['get', 'days']]], 15, ['+', 22, ['*', 3, ['get', 'days']]], 18, ['+', 120, ['*', 12, ['get', 'days']]]] as unknown as number
+      map.addLayer({
+        id: 'hotspot-disc',
+        type: 'circle',
+        source: 'hotspots',
+        paint: {
+          'circle-radius': spotRadius,
+          'circle-color': '#38BDF8',
+          'circle-opacity': ['case', ['>', ['get', 'deep'], 0], 0.2, 0.13] as unknown as number,
+          'circle-stroke-color': '#38BDF8',
+          'circle-stroke-width': 1.25,
+          'circle-stroke-opacity': 0.75,
+          'circle-blur': 0.15,
+        },
+      })
 
       map.addLayer({ id: 'alt-lines', type: 'line', source: 'alternatives', layout: round, paint: { 'line-color': color, 'line-width': 4, 'line-opacity': 0.7 } })
       map.addLayer({ id: 'standard-line', type: 'line', source: 'standard', layout: round, paint: { 'line-color': color, 'line-width': 3.5, 'line-dasharray': [0.6, 2.2], 'line-opacity': 0.9 } })
@@ -315,6 +342,7 @@ const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap(props, ref)
       for (const id of ['alt-lines', 'standard-line', 'active-casing', 'active-line']) map.setPaintProperty(id, 'line-opacity-transition', { duration: 320, delay: 0 })
 
       ready.current = true
+      drawHotspots(map)
       drawFloods(map)
       drawEnds(map)
       fit(map, false)
@@ -337,6 +365,11 @@ const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap(props, ref)
     if (mapRef.current && ready.current && flow.current.drawnPreset === latest.current.preset.id) drawRoutes(mapRef.current)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.entries, active, props.recalculating, mode])
+
+  useEffect(() => {
+    if (mapRef.current && ready.current) drawHotspots(mapRef.current)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.hotspots])
 
   useEffect(() => {
     if (mapRef.current && ready.current) drawFloods(mapRef.current)

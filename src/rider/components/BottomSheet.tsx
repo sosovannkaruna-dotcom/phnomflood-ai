@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Motorcycle as Bike, Car, Taxi as CarTaxiFront, Check, MagnifyingGlass as Search, NavigationArrow, ShieldCheck, Stop, Warning as TriangleAlert, X } from '@phosphor-icons/react'
+import { Motorcycle as Bike, Car, Taxi as CarTaxiFront, Check, Clock, Drop, MagnifyingGlass as Search, NavigationArrow, ShieldCheck, Stop, Warning as TriangleAlert, X } from '@phosphor-icons/react'
 import { DEPTHS } from '../../lib/severity'
 import { useT, type Key } from '../../i18n'
 import type { AppMode } from '../../shared/mode'
@@ -11,6 +11,11 @@ import type { RideStatus } from '../hooks/useRide'
 import { clearsIn, floodsOnRoute, metresBetween, passability, routeLengthKm, routeSteps } from '../lib/trip'
 import type { RouteStatus } from '../hooks/useLive'
 import { drainText } from '../lib/format'
+import { departureAdvice } from '../lib/departure'
+import type { RainSlot } from '../hooks/useWeather'
+import BriefingCard from './BriefingCard'
+import type { BriefingState } from '../../services/briefing'
+import type { HotspotState } from '../hooks/useHotspots'
 
 const VEHICLES: { id: VehicleId; Icon: typeof Bike }[] = [
   { id: 'moto', Icon: Bike },
@@ -33,6 +38,12 @@ interface Props {
   onClear: (id: string) => void
   /** Rain falling now, mm/h (for the drain estimate) */
   rainNow?: number
+  /** Live: rain in 15-minute steps, for "leave now or wait" */
+  forecast?: RainSlot[]
+  /** Live: the AI city flood briefing */
+  briefing?: BriefingState
+  /** Live: flood-prone spots (predicted from report history) */
+  spots?: { state: HotspotState; shown: number; auto: boolean; manual: boolean; toggle: () => void }
   /** Live mode: search any place instead of the demo's trip list */
   live?: {
     origin: string
@@ -44,8 +55,8 @@ interface Props {
 }
 
 /** Two-detent sheet: riding view when collapsed, route comparison and nearby alerts when expanded. */
-export default function BottomSheet({ trip, reports, position, mode, sync, ride, onStartRide, onStopRide, onReport, onConfirm, onClear, live, rainNow = 0 }: Props) {
-  const { t } = useT()
+export default function BottomSheet({ trip, reports, position, mode, sync, ride, onStartRide, onStopRide, onReport, onConfirm, onClear, live, rainNow = 0, forecast, briefing, spots }: Props) {
+  const { t, lang } = useT()
   const [expanded, setExpanded] = useState(false)
   const [searching, setSearching] = useState(false)
   const [query, setQuery] = useState('')
@@ -60,6 +71,23 @@ export default function BottomSheet({ trip, reports, position, mode, sync, ride,
   const syncKey: Key = mode === 'demo' ? 'sync.demo' : (`sync.${sync}` as Key)
 
   const hasRoute = !live || (live.status === 'ready' && !!live.destination)
+
+  // Live, before Start: leave now or wait, from the rain forecast and the drain estimates.
+  const advice = (() => {
+    if (!live || !forecast?.length || !hasRoute || ride !== 'idle') return null
+    const drainOf = (entry: RouteEntry) => Math.max(0, ...floodsOnRoute(entry.candidate, reports).map((f) => clearsIn(f.report, rainNow)))
+    const usualWetter = trip.standard.candidate.id !== active.candidate.id && trip.standard.worst > active.worst
+    const time = new Intl.DateTimeFormat(lang === 'km' ? 'km-KH' : 'en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Phnom_Penh' })
+    return departureAdvice({
+      series: forecast,
+      tripMin: active.minutes,
+      usualDrainMin: usualWetter ? drainOf(trip.standard) : null,
+      extraMin: Math.max(0, active.minutes - trip.standard.minutes),
+      ownDrainMin: active.blockers.length + active.cautions.length ? drainOf(active) : null,
+      format: (ms) => time.format(ms),
+    })
+  })()
+  const ADVICE_COLOR = { go: 'text-emerald-400', wait: 'text-amber-400', warn: 'text-flare' }
   const matches = trip.presets.filter((p) => `${p.label} ${p.destination.name} ${p.origin.name}`.toLowerCase().includes(query.toLowerCase()))
   const nearby = reports
     .filter((r) => r.depth !== 'clear')
@@ -177,6 +205,28 @@ export default function BottomSheet({ trip, reports, position, mode, sync, ride,
               </button>
             )}
 
+            {/* Live, no destination yet: the city briefing's headline, tap for the whole briefing */}
+            {live && briefing && !hasRoute && ride === 'idle' && !expanded && <BriefingCard state={briefing} compact onOpen={() => setExpanded(true)} />}
+
+            {/* Flood-prone spots on the map: say what the blue discs are, every time they show */}
+            {spots && spots.shown > 0 && (
+              <p className="flex items-start gap-2 text-xs leading-snug text-zinc-100">
+                <Drop weight="fill" className="mt-px h-4 w-4 shrink-0 text-water" />
+                <span>
+                  {t(spots.auto ? 'spots.auto' : 'spots.manual', { n: spots.shown })} <span className="text-zinc-500">{t('spots.predicted')}</span>
+                </span>
+              </p>
+            )}
+
+            {advice && (
+              <p className="flex items-start gap-2 text-xs leading-snug text-zinc-100" aria-live="polite">
+                <Clock weight="bold" className={`mt-px h-4 w-4 shrink-0 ${ADVICE_COLOR[advice.tone]}`} />
+                <span>
+                  {t(advice.key, advice.vars)} <span className="text-zinc-500">{t('leave.note')}</span>
+                </span>
+              </p>
+            )}
+
             {live?.note && <p className={`text-xs ${live.status === 'error' ? 'text-red-400' : 'text-zinc-400'}`}>{live.note}</p>}
 
             {/* Route filters: one hairline-divided row */}
@@ -237,6 +287,7 @@ export default function BottomSheet({ trip, reports, position, mode, sync, ride,
             className="overflow-hidden"
           >
             <div className="cc-scroll max-h-[38dvh] space-y-5 overflow-y-auto overflow-x-hidden border-t border-white/[0.12] px-3 py-4">
+              {live && briefing && <BriefingCard state={briefing} />}
               {hasRoute && (
                 <section>
                   <h3 className="tl-label pb-2">{t('sheet.directions')}</h3>
@@ -334,6 +385,36 @@ export default function BottomSheet({ trip, reports, position, mode, sync, ride,
                 </ul>
               </section>
 
+              {spots && (
+                <section>
+                  <h3 className="tl-label pb-2">{t('spots.title')}</h3>
+                  <div className="flex items-center gap-3 border border-white/[0.12] p-3">
+                    <Drop weight="fill" className="h-5 w-5 shrink-0 text-water" />
+                    <p className="min-w-0 flex-1 text-xs leading-snug text-zinc-300">
+                      {spots.state.status === 'ready'
+                        ? spots.state.spots.length
+                          ? t('spots.known', { n: spots.state.spots.length })
+                          : t('spots.none')
+                        : spots.state.status === 'not-set-up'
+                          ? t('spots.notSetUp')
+                          : spots.state.status === 'loading'
+                            ? t('spots.loading')
+                            : t('spots.error')}
+                    </p>
+                    {spots.state.status === 'ready' && spots.state.spots.length > 0 && !spots.auto && (
+                      <button onClick={spots.toggle} aria-pressed={spots.manual} className={`rd-press h-10 shrink-0 px-3 text-sm font-medium ${spots.manual ? 'bg-zinc-100 text-zinc-950' : 'border border-white/25 text-zinc-100'}`}>
+                        {spots.manual ? t('spots.hide') : t('spots.show')}
+                      </button>
+                    )}
+                  </div>
+                </section>
+              )}
+
+              {mode === 'live' && (
+                <a href="#/data" className="rd-press flex h-10 items-center justify-between border border-white/[0.15] px-3 text-sm text-zinc-200">
+                  {t('sheet.openData')} <span className="font-mono text-xs text-zinc-500">GeoJSON · CSV</span>
+                </a>
+              )}
               <p className="text-[11px] text-zinc-500">Map data © OpenStreetMap contributors · Map tiles: OpenFreeMap</p>
             </div>
           </motion.div>

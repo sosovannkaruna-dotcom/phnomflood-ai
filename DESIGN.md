@@ -158,9 +158,9 @@ A near-black instrument panel with one hazard-red accent, one storm-dusk seconda
 - **Flare** (#FF6A55): the same hue lifted for red text on the dark substrate, where Hazard Red would miss AA contrast at small sizes.
 
 ### Secondary
-- **Dusk** (#9C98D6): the "touch" colour. Hover and pointer feedback (the outline button's hover edge, the crosshair readout), the scroll-progress hairline, hint text, and row underlines that draw on hover.
-- **Dusk Mid** (#5D5AA6): hairlines in Dusk: the pointer crosshair.
-- **Dusk Deep** (#131226): a tinted surface one step off Void: the water-gauge card, and the hover fill of outline buttons and statistic cells.
+- **Dusk** (#9C98D6): the "touch" colour. Hover and pointer feedback (the outline button's hover edge), the scroll-progress hairline, hint text, and row underlines that draw on hover.
+- **Dusk Mid** (#5D5AA6): reserved for hairlines in Dusk.
+- **Dusk Deep** (#131226): a tinted surface one step off Void: the water-gauge card, and the hover fill of outline buttons.
 
 ### Neutral
 - **Void** (#0A0A0B): the page and app substrate; also the dark ink on light pins and chips.
@@ -279,8 +279,11 @@ Firm and fast: square, solid, and pressing down instantly with no glow.
 ### Water Gauge
 A 64px ruled column that fills from the bottom in the depth colour (Water sky below ankle depth), dragged vertically, with the level in large mono centimetres and a pass, slow or stop state per vehicle in Clear, Caution or Flare text. It sits on a Dusk Deep card.
 
-### Pointer Crosshair
-Inside statistic cells, two Dusk Mid hairlines follow a fine pointer with a mono x/y readout in the top-right corner, and the cell tints to Dusk Deep. Decoration only; nothing depends on it.
+### Page Transitions
+Moves between pages use the browser's View Transitions: the landing page is the front, the app and the data page sit one level in. Going in, the old page eases back to 97% and blurs (300 ms) while the new one rises 32 px into place (520 ms, cubic-bezier(0.23, 1, 0.32, 1)); going back is the mirror; moves between the app and the data page are a short cross-fade. The hero map and the phone frame are one object ("pf-stage") that grows into the app and shrinks back (600 ms, the drawer curve), and the top bar holds still between the landing and data pages. Keyboard shortcuts and reduced motion switch instantly.
+
+### Flood-Prone Spots
+Places riders have reported water on two or more days, drawn as soft Water discs (13–20% fill, a 1.25 px Water ring) under every route and report, larger where it has flooded on more days. They appear by themselves in heavy rain, with a sheet line that always says "predicted from past reports, not reported now"; Water, never red or amber, keeps a prediction from reading as a report.
 
 ### Map Marks (signature)
 - **Flood lines:** thin translucent lines in the depth colour along the flooded stretch; no markers or tags on the line itself.

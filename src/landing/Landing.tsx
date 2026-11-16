@@ -25,7 +25,7 @@ const STATEMENT = 'Water rises faster than information moves. PhnomFlood closes 
 const FIGURES = [
   { value: '86%', text: 'of new vehicles registered in Cambodia in 2024 were motorcycles: 353,603 of 413,067.', source: 'MPWT via AKP, Jan 2025', span: 'lg:col-span-5' },
   { value: '80%', text: 'of Phnom Penh’s 1,412 mm of yearly rain falls between May and October.', source: 'DWD climate normals', span: 'lg:col-span-4' },
-  { value: '16 / 26', text: 'of the city’s lakes have been filled in, so storm water has fewer places to go.', source: 'STT, “The Last Lakes”, 2019', span: 'lg:col-span-3' },
+  { value: '16/26', label: '16 of 26', text: 'of the city’s lakes have been filled in, so storm water has fewer places to go.', source: 'STT, “The Last Lakes”, 2019', span: 'lg:col-span-3' },
 ]
 
 const SLICES = [
@@ -83,18 +83,6 @@ const magnet = CAN_HOVER
       },
     }
   : {}
-
-// Telemetry crosshair: hairlines and a coordinate readout follow the pointer inside a cell.
-function cross(e: React.PointerEvent<HTMLElement>) {
-  const el = e.currentTarget
-  const r = el.getBoundingClientRect()
-  const x = e.clientX - r.left
-  const y = e.clientY - r.top
-  el.style.setProperty('--cx', `${x.toFixed(0)}px`)
-  el.style.setProperty('--cy', `${y.toFixed(0)}px`)
-  const read = el.querySelector('.ln-cross-read')
-  if (read) read.textContent = `x ${(x / r.width).toFixed(2)}  y ${(y / r.height).toFixed(2)}`
-}
 
 /** Depth rank (0 clear … 3 waist) for a water level in centimetres. */
 const rankAt = (cm: number) => (cm >= DEPTHS.waist.cm ? 3 : cm >= DEPTHS.knee.cm ? 2 : cm >= DEPTHS.ankle.cm ? 1 : 0)
@@ -164,9 +152,11 @@ export default function Landing({ onOpen }: Props) {
     () => {
       const mm = gsap.matchMedia()
 
+      // Arriving through a page transition, the page has already moved into place: no second entrance.
+      const arrived = Boolean(document.documentElement.dataset.nav)
       mm.add('(prefers-reduced-motion: no-preference)', () => {
         // Hero: lines rise into place in sequence, so the eye reads headline, then promise, then action.
-        gsap
+        if (!arrived) gsap
           .timeline({ defaults: { ease: 'power3.out' } })
           .from('.hero-line', { yPercent: 105, duration: 0.9, stagger: 0.12 })
           .from('.hero-fade', { opacity: 0, y: 14, duration: 0.6, stagger: 0.08 }, '-=0.55')
@@ -219,7 +209,7 @@ export default function Landing({ onOpen }: Props) {
       </a>
 
       {/* Navigation: one line, 64px, hairline underneath */}
-      <header className="fixed inset-x-0 top-0 z-40 border-b border-white/10 bg-void/90 backdrop-blur-md">
+      <header className="pf-header fixed inset-x-0 top-0 z-40 border-b border-white/10 bg-void/90 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-[1400px] items-center justify-between gap-4 px-4 sm:px-8">
           <a href="#/" aria-label="PhnomFlood AI home" className="flex items-center gap-3">
             <svg viewBox="0 0 20 20" className="h-6 w-6 shrink-0" aria-hidden>
@@ -233,6 +223,7 @@ export default function Landing({ onOpen }: Props) {
             <button onClick={() => jump('depth')} className={navLink}>How it reads water</button>
             <button onClick={() => jump('product')} className={navLink}>On the road</button>
             <button onClick={() => jump('versions')} className={navLink}>Demo or live</button>
+            <a href="#/data" className={navLink}>Open data</a>
           </nav>
           <button
             onClick={() => onOpen('demo')}
@@ -259,7 +250,7 @@ export default function Landing({ onOpen }: Props) {
             </div>
           </div>
           <div className="lg:col-span-5">
-            <div className="hero-photo aspect-[4/5] w-full border border-white/15 bg-void">
+            <div data-stage className="hero-photo aspect-[4/5] w-full border border-white/15 bg-void">
               <Suspense
                 fallback={
                   <div className="ln-halftone-wrap h-full w-full">
@@ -295,9 +286,9 @@ export default function Landing({ onOpen }: Props) {
           <h2 className="font-display max-w-[18ch] text-[clamp(2.25rem,5vw,4.5rem)]">A motorbike city with nowhere for the rain to go.</h2>
           <div className="figures mt-14 grid grid-cols-1 gap-px border border-white/15 bg-white/15 lg:grid-cols-12">
             {FIGURES.map((f, i) => (
-              <div key={f.value} onPointerMove={cross} className={`figure ln-cross flex flex-col justify-between gap-10 p-7 ${f.span} ${i === 0 ? 'bg-slab' : 'bg-void'}`}>
-                <span className="ln-cross-read" aria-hidden />
-                <p className={`font-display text-[clamp(3.5rem,7vw,6.5rem)] ${i === 0 ? 'text-signal' : 'text-zinc-50'}`} aria-label={f.value}>
+              <div key={f.value} className={`figure flex flex-col justify-between gap-10 p-7 ${f.span} ${i === 0 ? 'bg-slab' : 'bg-void'}`}>
+                {/* A long figure (16/26) in the narrowest column steps down a size so it stays on one line */}
+                <p className={`font-display whitespace-nowrap ${f.value.length > 4 ? 'text-[clamp(2.75rem,4.6vw,5rem)]' : 'text-[clamp(3.5rem,7vw,6.5rem)]'} ${i === 0 ? 'text-signal' : 'text-zinc-50'}`} aria-label={'label' in f ? f.label : f.value}>
                   <span className="fig-count" data-to={parseInt(f.value, 10)} aria-hidden>{parseInt(f.value, 10)}</span>
                   <span aria-hidden>{f.value.replace(/^\d+/, '')}</span>
                 </p>
@@ -455,6 +446,7 @@ export default function Landing({ onOpen }: Props) {
             <span className="flex items-center gap-2"><Translate className="h-4 w-4" /> English and Khmer</span>
             <span className="flex items-center gap-2"><DeviceMobile className="h-4 w-4" /> Installs to your home screen</span>
             <span>The ride is simulated in both versions; routes and street names are real.</span>
+            <a href="#/data" className="text-dusk underline-offset-4 hover:underline">Live reports are open data: download or use the API</a>
           </div>
         </section>
 

@@ -7,12 +7,14 @@ import { createContext, useContext, useEffect, useMemo, useReducer, useRef, useS
 import { SEED_REPORTS, SEED_QUEUE, BASE_RIDERS_REROUTED, SEED_VERSION } from '../data/seed'
 import { clearState, loadState, saveState } from '../services/api'
 import { clearRemote, confirmRemote, fetchChanges, insertReport, syncConfigured } from '../services/sync'
+import { connectRealtime } from '../services/realtime'
 import { DEPTHS } from '../lib/severity'
 
 const FloodContext = createContext(null)
 
 const minutesAgo = (m) => Date.now() - m * 60 * 1000
 const POLL_MS = 3000
+const PUSHED_POLL_MS = 20000
 
 function freshState(mode) {
   if (mode === 'live') return { reports: [], queue: [], ridersRerouted: 0, feed: [] }
@@ -121,16 +123,25 @@ export function FloodProvider({ mode = 'demo', children }) {
     )
   }, [state, mode, shared])
 
-  // Live sync: poll for changes, pause while the tab is hidden.
+  // Live sync: Realtime pushes "something changed" and the app fetches at once; polling stays on
+  // as the safety net (every 3 s until a realtime event has proven the push works, then every 20 s).
   useEffect(() => {
     if (!shared) return
     let stopped = false
     let timer = 0
     let first = true
     let controller = null
+    let pushed = false
+    let busy = false
     const tick = async () => {
       if (stopped) return
+      window.clearTimeout(timer)
+      if (busy) {
+        timer = window.setTimeout(tick, 300)
+        return
+      }
       if (document.visibilityState === 'visible') {
+        busy = true
         controller = new AbortController()
         try {
           const rows = await fetchChanges(cursor.current, controller.signal)
@@ -143,14 +154,26 @@ export function FloodProvider({ mode = 'demo', children }) {
         } catch (error) {
           if (error.name !== 'AbortError') setSync('offline')
         }
+        busy = false
       }
-      timer = window.setTimeout(tick, POLL_MS)
+      timer = window.setTimeout(tick, pushed ? PUSHED_POLL_MS : POLL_MS)
     }
     tick()
+    const disconnect = connectRealtime({
+      onChange: () => void tick(),
+      onEvent: () => {
+        pushed = true
+      },
+    })
+    // Back to the tab: catch up at once.
+    const onVisible = () => document.visibilityState === 'visible' && void tick()
+    document.addEventListener('visibilitychange', onVisible)
     return () => {
       stopped = true
       window.clearTimeout(timer)
       controller?.abort()
+      disconnect()
+      document.removeEventListener('visibilitychange', onVisible)
     }
   }, [shared])
 

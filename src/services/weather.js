@@ -25,11 +25,18 @@ export async function fetchLiveWeather(signal) {
     current: 'precipitation,rain',
     hourly: 'precipitation,precipitation_probability',
     forecast_hours: '4',
+    // 15-minute steps for the next six hours, for "leave now or wait"
+    minutely_15: 'precipitation',
+    forecast_minutely_15: '24',
     timezone: 'Asia/Phnom_Penh',
   })
   const res = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`, { signal })
   if (!res.ok) throw new Error(`Open-Meteo responded ${res.status}`)
   const json = await res.json()
+  // Times come in Phnom Penh local time (UTC+7, no daylight saving); each value is mm in 15 min.
+  const offset = Number(json.utc_offset_seconds ?? 25200) * 1000
+  const quarter = json.minutely_15 ?? {}
+  const series = (quarter.time ?? []).map((t, i) => ({ at: Date.parse(`${t}:00Z`) - offset, mmh: Number(quarter.precipitation?.[i] ?? 0) * 4 }))
   const rainNow = Number(json.current?.precipitation ?? 0)
   const hourly = json.hourly ?? {}
   // hourly starts at the current hour: the next three hours are indices 1–3
@@ -44,5 +51,6 @@ export async function fetchLiveWeather(signal) {
     chance,
     heavy: rainNow >= HEAVY_MM_PER_HOUR || next3h >= HEAVY_MM_PER_HOUR * 2,
     observedAt: json.current?.time ?? null,
+    series,
   }
 }

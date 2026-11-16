@@ -77,5 +77,29 @@ async function rpc(name, id) {
   if (!res.ok) throw new Error(`Supabase responded ${res.status}`)
 }
 
+/**
+ * Flood-prone spots: places riders reported water on two or more days (supabase/schema.sql,
+ * flood_hotspots). Throws an error named "NotSetUp" when the function has not been created yet.
+ */
+export async function fetchHotspots(days = 90, signal) {
+  const res = await fetch(`${URL}/rest/v1/rpc/flood_hotspots`, { method: 'POST', headers: headers(), body: JSON.stringify({ p_days: days }), signal })
+  if (res.status === 404) {
+    const error = new Error('flood_hotspots is not set up')
+    error.name = 'NotSetUp'
+    throw error
+  }
+  if (!res.ok) throw new Error(`Supabase responded ${res.status}`)
+  return (await res.json()).map((row) => ({
+    lat: row.lat,
+    lng: row.lng,
+    name: row.name,
+    khan: row.khan,
+    reports: row.reports,
+    deep: row.deep,
+    days: row.days,
+    lastReported: Date.parse(row.last_reported),
+  }))
+}
+
 export const confirmRemote = (id) => rpc('confirm_report', id)
 export const clearRemote = (id) => rpc('clear_report', id)

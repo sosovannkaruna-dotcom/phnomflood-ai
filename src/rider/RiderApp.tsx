@@ -16,6 +16,10 @@ import { PRESETS, analyse, clearsIn, divergence, floodAhead, floodAt, floodsOnRo
 import { drainText } from './lib/format'
 import FloodCard from './components/FloodCard'
 import TourOverlay from './components/TourOverlay'
+import StillThere, { type StillAnswer } from './components/StillThere'
+import { canAsk, markAsked, markMine } from './lib/asked'
+import { useBriefing } from '../services/briefing'
+import { useHotspots } from './hooks/useHotspots'
 import { distanceToPath } from '../lib/geo'
 import { DEPTHS } from '../lib/severity'
 import { reverseName } from '../services/liveRouting'
@@ -85,6 +89,13 @@ function Rider({ onHome, tour = false }: { onHome: () => void; tour?: boolean })
   )
   const planning = live && !liveRoute.preset
   const weather = useWeather(appMode)
+  // Live: the AI city briefing, refreshed when the reports change
+  // Live: flood-prone spots from report history, shown by themselves when heavy rain is falling or forecast.
+  const hotspotState = useHotspots(live)
+  const [spotsOn, setSpotsOn] = useState(false)
+  const heavyRain = weather.status === 'ready' && weather.weather.heavy
+  const spotsShown = live && hotspotState.status === 'ready' && (heavyRain || spotsOn) ? hotspotState.spots : []
+  const briefing = useBriefing(lang, live, `${reports.length}:${reports.reduce((s, r) => s + (r.confirmations ?? 0), 0)}`)
   const rainNow = weather.status === 'ready' ? weather.weather.rainNow : 0
   // Depth tags and red / amber hazard markers are always on: they are the warning.
   const mapMode: MapMode = 'depth'
@@ -270,9 +281,11 @@ function Rider({ onHome, tour = false }: { onHome: () => void; tour?: boolean })
   const submit = useCallback(
     ({ depth, ai, photo }: { depth: FloodReport['depth']; ai: VisionResult | null; photo: string | null }) => {
       const now = Date.now()
+      const id = `${tourOnRef.current ? 's-r' : 'r'}-${now}-${Math.random().toString(36).slice(2, 7)}`
+      if (live) markMine(id)
       addReport({
         // The tour's own report is marked scripted ("s-"), so it is cleared when the tour ends or replays.
-        id: `${tourOnRef.current ? 's-r' : 'r'}-${now}-${Math.random().toString(36).slice(2, 7)}`,
+        id,
         name: place.name,
         area: place.area,
         khan: place.khan,
@@ -289,12 +302,36 @@ function Rider({ onHome, tour = false }: { onHome: () => void; tour?: boolean })
       setReporting(false)
       setTourStep((s) => (s === TOUR_STEPS ? TOUR_STEPS + 1 : s))
     },
-    [addReport, place, trip.position],
+    [addReport, place, trip.position, live],
   )
 
   // A tapped flood line: its details, while browsing the map (not while navigating).
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const selected = navigating || reporting ? null : (reports.find((r) => r.id === selectedId && r.depth !== 'clear') ?? null)
+
+  // Live: passing a flood someone else reported? Ask whether it is still there, once.
+  // This is what keeps the shared map fresh without anyone opening a menu.
+  const [asking, setAsking] = useState<FloodReport | null>(null)
+  useEffect(() => {
+    if (!live || asking || reporting || selected || !gps.point || (gps.accuracy ?? 999) > 60) return
+    const here = gps.point
+    const near = reports
+      .filter((r) => r.depth !== 'clear' && canAsk(r.id))
+      .map((r) => ({ r, m: metresBetween(here, [r.lat, r.lng]) }))
+      .filter((x) => x.m <= 60)
+      .sort((a, b) => a.m - b.m)[0]
+    if (near) setAsking(near.r)
+  }, [live, asking, reporting, selected, gps.point, gps.accuracy, reports])
+  const answerStill = useCallback(
+    (answer: StillAnswer | null) => {
+      if (!asking) return
+      markAsked(asking.id)
+      if (answer === 'still') confirmReport(asking.id)
+      if (answer === 'cleared') clearReport(asking.id)
+      setAsking(null)
+    },
+    [asking, confirmReport, clearReport],
+  )
 
   // ── Guided demo ("Watch it work"): five captioned steps that drive the real app ──
   const [tourOn, setTourOn] = useState(tour)
@@ -389,6 +426,7 @@ function Rider({ onHome, tour = false }: { onHome: () => void; tour?: boolean })
         planning={planning}
         floodAt={waterKind}
         onFloodTap={setSelectedId}
+        hotspots={spotsShown}
       />
 
       {/* Riding through water: the screen edge pulses in the flood's colour */}
@@ -449,6 +487,9 @@ function Rider({ onHome, tour = false }: { onHome: () => void; tour?: boolean })
         onConfirm={confirmReport}
         onClear={clearReport}
         rainNow={rainNow}
+        forecast={weather.status === 'ready' ? weather.weather.series : undefined}
+        briefing={live ? briefing : undefined}
+        spots={live ? { state: hotspotState, shown: spotsShown.length, auto: heavyRain, manual: spotsOn, toggle: () => setSpotsOn((v) => !v) } : undefined}
         live={
           live
             ? {
@@ -493,6 +534,8 @@ function Rider({ onHome, tour = false }: { onHome: () => void; tour?: boolean })
           />
         )}
       </AnimatePresence>
+
+      <AnimatePresence>{asking && !reporting && <StillThere key={asking.id} report={asking} bottom={panelH} onAnswer={answerStill} />}</AnimatePresence>
 
       <AnimatePresence>
         {reporting && <ReportDrawer key="report" place={place} position={trip.position} onClose={() => setReporting(false)} onSubmit={submit} autoplay={tourOn && tourStep === TOUR_STEPS} />}
