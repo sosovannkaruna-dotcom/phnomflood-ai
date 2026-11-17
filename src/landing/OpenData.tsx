@@ -2,6 +2,7 @@ import { Suspense, lazy, useEffect, useState } from 'react'
 import { ArrowLeft, ArrowsClockwise, Copy, DownloadSimple, Check, Sparkle } from '@phosphor-icons/react'
 import { minutesSince, useBriefing } from '../services/briefing'
 import type { HistoryReport } from './FloodReplay'
+import BackToTop from '../shared/BackToTop'
 
 // The replay map loads after the page (MapLibre is large).
 const FloodReplay = lazy(() => import('./FloodReplay'))
@@ -347,6 +348,8 @@ export default function OpenData({ onHome }: { onHome: () => void }) {
           </div>
         </section>
       </main>
+
+      <BackToTop />
     </div>
   )
 }

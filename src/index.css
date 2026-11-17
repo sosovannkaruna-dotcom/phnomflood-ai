@@ -844,11 +844,28 @@ body::after {
   animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
+/* Into the app: the page zooms in toward what was pressed (--pf-ox/--pf-oy, set in App.jsx) while
+   that element grows into the phone, so the app reads as coming out of the button or the map. */
 html[data-nav='forward']::view-transition-old(root) {
-  animation: pf-recede 300ms cubic-bezier(0.23, 1, 0.32, 1) both;
+  transform-origin: var(--pf-ox, 50%) var(--pf-oy, 50%);
+  animation: pf-zoom-in 460ms cubic-bezier(0.55, 0, 0.1, 1) both;
 }
 html[data-nav='forward']::view-transition-new(root) {
-  animation: pf-rise 520ms cubic-bezier(0.23, 1, 0.32, 1) 60ms both;
+  animation: pf-fade-in 360ms ease 180ms both;
+}
+/* The travelling stage lifts off the page like a device: a hairline edge and a deep shadow. */
+html[data-nav='forward']::view-transition-group(pf-stage) {
+  animation-duration: 640ms;
+  animation-timing-function: cubic-bezier(0.55, 0, 0.1, 1);
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.18),
+    0 40px 90px -20px rgb(0 0 0 / 0.85);
+}
+html[data-nav='forward']::view-transition-old(pf-stage) {
+  animation: pf-fade-out 220ms ease both;
+}
+html[data-nav='forward']::view-transition-new(pf-stage) {
+  animation: pf-fade-in 360ms ease 120ms both;
 }
 html[data-nav='back']::view-transition-old(root) {
   animation: pf-sink 280ms cubic-bezier(0.23, 1, 0.32, 1) both;
@@ -908,10 +925,11 @@ html[data-nav='lateral']::view-transition-new(root) {
     filter: blur(6px);
   }
 }
-@keyframes pf-rise {
-  from {
+@keyframes pf-zoom-in {
+  to {
     opacity: 0;
-    transform: translateY(32px);
+    transform: scale(1.6);
+    filter: blur(8px);
   }
 }
 @keyframes pf-sink {

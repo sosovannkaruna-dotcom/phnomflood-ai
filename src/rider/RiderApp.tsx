@@ -489,7 +489,8 @@ function Rider({ onHome, tour = false }: { onHome: () => void; tour?: boolean })
       {mapNav && panned && (
         <button
           onClick={() => setPanned(false)}
-          className="rd-press absolute bottom-[calc(96px+env(safe-area-inset-bottom,0px))] left-3 z-10 flex h-10 items-center gap-2 bg-zinc-100 px-3.5 text-sm font-semibold text-zinc-950 shadow-[0_6px_18px_rgba(0,0,0,0.45)]"
+          style={{ bottom: panelH + 8 }}
+          className="rd-press absolute left-3 z-10 flex h-10 items-center gap-2 bg-zinc-100 px-3.5 text-sm font-semibold text-zinc-950 shadow-[0_6px_18px_rgba(0,0,0,0.45)]"
         >
           <NavigationArrow className="h-4 w-4" /> {t('nav.recenter')}
         </button>

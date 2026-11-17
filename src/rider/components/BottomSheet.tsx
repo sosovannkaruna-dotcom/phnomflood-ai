@@ -65,6 +65,9 @@ interface Props {
 export default function BottomSheet({ trip, reports, position, mode, sync, ride, onStartRide, onStopRide, onReport, onConfirm, onClear, live, rainNow = 0, forecast, briefing, spots, impact, offline }: Props) {
   const { t, lang } = useT()
   const [expanded, setExpanded] = useState(false)
+  // Lowest detent: only the handle shows, so the whole map is free. Any change of ride state brings the sheet back.
+  const [lowered, setLowered] = useState(false)
+  useEffect(() => setLowered(false), [ride])
   const [searching, setSearching] = useState(false)
   const [query, setQuery] = useState('')
   const { preset, entries, active, vehicle, dryOnly, recalculating } = trip
@@ -111,20 +114,36 @@ export default function BottomSheet({ trip, reports, position, mode, sync, ride,
 
   return (
     <div data-bottom-panel className="pb-safe absolute inset-x-0 bottom-0 z-20 border-t border-white/[0.15] bg-void/95 backdrop-blur-md">
-      {/* Drag handle: drag or tap to change detent */}
+      {/* Drag handle: three detents. Up: lowered → normal → expanded. Down: expanded → normal → lowered (handle only, map clear). */}
       <motion.button
-        onClick={() => setExpanded((e) => !e)}
+        onClick={() => (lowered ? setLowered(false) : setExpanded((e) => !e))}
         onPanEnd={(_, info) => {
-          if (info.offset.y < -24) setExpanded(true)
-          if (info.offset.y > 24) setExpanded(false)
+          if (info.offset.y < -24) {
+            if (lowered) setLowered(false)
+            else setExpanded(true)
+          }
+          if (info.offset.y > 24) {
+            if (expanded) setExpanded(false)
+            else if (!searching) setLowered(true)
+          }
         }}
-        aria-expanded={expanded}
-        aria-label={expanded ? t('sheet.collapse') : t('sheet.expand')}
-        className="flex h-7 w-full touch-none items-center justify-center"
+        aria-expanded={!lowered && expanded}
+        aria-label={lowered ? t('sheet.raise') : expanded ? t('sheet.collapse') : t('sheet.expand')}
+        className={`flex w-full touch-none items-center justify-center ${lowered ? 'h-9' : 'h-7'}`}
       >
         <span className="h-1 w-10 bg-white/25" />
       </motion.button>
 
+      <AnimatePresence initial={false}>
+      {!lowered && (
+      <motion.div
+        key="body"
+        initial={{ height: 0, opacity: 0 }}
+        animate={{ height: 'auto', opacity: 1 }}
+        exit={{ height: 0, opacity: 0 }}
+        transition={{ type: 'spring', stiffness: 320, damping: 34 }}
+        className="overflow-hidden"
+      >
       <div className="space-y-2 px-3 pb-3">
         {searching && live ? (
           live.renderSearch(() => setSearching(false))
@@ -255,7 +274,7 @@ export default function BottomSheet({ trip, reports, position, mode, sync, ride,
               <button
                 onClick={trip.toggleDryOnly}
                 aria-pressed={dryOnly}
-                className={`rd-press flex h-10 shrink-0 items-center gap-1.5 px-2.5 text-[13px] font-medium ${dryOnly ? 'bg-emerald-500/15 text-emerald-400' : 'text-zinc-300'}`}
+                className={`rd-press flex h-10 flex-auto shrink-0 items-center justify-center gap-1 whitespace-nowrap px-1.5 text-[13px] min-[400px]:gap-1.5 min-[400px]:px-2.5 font-medium ${dryOnly ? 'bg-emerald-500/15 text-emerald-400' : 'text-zinc-300'}`}
               >
                 <ShieldCheck className="h-4 w-4" /> {t('sheet.dryOnly')}
               </button>
@@ -264,7 +283,7 @@ export default function BottomSheet({ trip, reports, position, mode, sync, ride,
                   key={id}
                   onClick={() => trip.setVehicle(id)}
                   aria-pressed={vehicle === id}
-                  className={`rd-press flex h-10 shrink-0 items-center gap-1.5 px-2.5 text-[13px] font-medium ${vehicle === id ? 'bg-signal text-zinc-50' : 'text-zinc-300'}`}
+                  className={`rd-press flex h-10 flex-auto shrink-0 items-center justify-center gap-1 whitespace-nowrap px-1.5 text-[13px] min-[400px]:gap-1.5 min-[400px]:px-2.5 font-medium ${vehicle === id ? 'bg-signal text-zinc-50' : 'text-zinc-300'}`}
                 >
                   <Icon className="h-4 w-4" /> {t(`vehicle.${id}` as Key)}
                 </button>
@@ -295,10 +314,13 @@ export default function BottomSheet({ trip, reports, position, mode, sync, ride,
           </>
         )}
       </div>
+      </motion.div>
+      )}
+      </AnimatePresence>
 
       {/* Expanded detent */}
       <AnimatePresence initial={false}>
-        {expanded && !searching && (
+        {expanded && !lowered && !searching && (
           <motion.div
             key="expanded"
             initial={{ height: 0, opacity: 0 }}

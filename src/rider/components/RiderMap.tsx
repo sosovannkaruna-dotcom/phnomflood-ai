@@ -117,8 +117,22 @@ const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap(props, ref)
       if (latest.current.navigating) flyToRider(map, prefersReducedMotion() ? 0 : 800)
       else map.flyTo({ center: [latest.current.position[1], latest.current.position[0]], zoom: 15, duration: 900 })
     },
-    zoomBy: (delta) => mapRef.current?.easeTo({ zoom: (mapRef.current?.getZoom() ?? 13) + delta, duration: 250 }),
+    zoomBy: (delta) => {
+      const map = mapRef.current
+      if (!map) return
+      const zoom = map.getZoom() + delta
+      // Following: zoom around the rider and pause the follow loop for the animation, or its
+      // per-frame camera update cancels the zoom before it moves.
+      if (latest.current.navigating && !latest.current.panned) {
+        const at = puck.current?.at ?? nav.current.to
+        nav.current.hold = performance.now() + 300
+        map.easeTo({ zoom, center: [at[1], at[0]], bearing: nav.current.camBearing, padding: navPadding(map), duration: 250 })
+      } else map.easeTo({ zoom, duration: 250 })
+    },
   }))
+  // A finger (or mouse button) is on the map: the follow loop leaves the camera alone, because every
+  // camera update stops MapLibre's gesture handlers and a touch pan or pinch would never get going.
+  const touching = useRef(false)
 
   // ── Draw helpers (read the latest props) ──
   function drawRoutes(map: MlMap) {
@@ -283,6 +297,19 @@ const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap(props, ref)
     }
     map.on('dragstart', userMoved)
     map.on('rotatestart', userMoved)
+    map.on('pitchstart', userMoved)
+    // Pinch or wheel zoom by the rider also pauses following, so they can look around (e.g. at the start pin).
+    map.on('zoomstart', userMoved)
+    const el = container.current!
+    const down = () => (touching.current = true)
+    const up = (e: TouchEvent | MouseEvent) => {
+      if (!('touches' in e) || e.touches.length === 0) touching.current = false
+    }
+    el.addEventListener('touchstart', down, { capture: true, passive: true })
+    el.addEventListener('touchend', up, { capture: true, passive: true })
+    el.addEventListener('touchcancel', up, { capture: true, passive: true })
+    el.addEventListener('mousedown', down, { capture: true })
+    window.addEventListener('mouseup', up)
 
     map.on('load', () => {
       for (const id of ['alternatives', 'standard', 'traveled', 'active', 'segments', 'hotspots']) map.addSource(id, { type: 'geojson', data: EMPTY })
@@ -359,6 +386,7 @@ const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap(props, ref)
       cancelAnimationFrame(flow.current.frame)
       cancelAnimationFrame(nav.current.frame)
       flow.current.timers.forEach((t) => window.clearTimeout(t))
+      window.removeEventListener('mouseup', up)
       map.remove()
       mapRef.current = null
     }
@@ -585,7 +613,7 @@ const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap(props, ref)
       n.puckBearing += turnBetween(n.puckBearing, target) * (calm ? 1 : 0.18)
       n.camBearing += turnBetween(n.camBearing, target) * (calm ? 1 : 0.06)
       p.marker.setRotation(n.puckBearing)
-      if (!latest.current.panned && now > n.hold) {
+      if (!latest.current.panned && !touching.current && now > n.hold) {
         map.jumpTo({ center: [at[1], at[0]], bearing: n.camBearing, padding: navPadding(map) })
       }
       drawRoutes(map)

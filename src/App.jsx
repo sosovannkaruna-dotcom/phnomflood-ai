@@ -34,16 +34,41 @@ function directionOf(from, to) {
 
 const canAnimate = () => typeof document !== 'undefined' && 'startViewTransition' in document && !window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
+const onScreen = (el) => {
+  if (!el) return false
+  const r = el.getBoundingClientRect()
+  return r.width > 0 && r.bottom > 0 && r.top < window.innerHeight
+}
+
 /**
- * The shared "stage" (hero map <-> phone) morphs only on moves into or out of the app, and only
- * when it is on screen: one scrolled away would fly in from nowhere, and on the data page there is
- * nothing for it to become.
+ * The shared "stage" morphs on moves into or out of the app: whatever was pressed (the hero map, or
+ * a Watch it work / demo / live button anywhere on the page) grows into the phone, and the phone
+ * shrinks back into the hero map. Only one element may carry the name at a time, and only one on
+ * screen: one scrolled away would fly in from nowhere.
  */
-function nameStage(morph) {
-  const stage = document.querySelector('[data-stage]')
-  if (!stage) return
-  const r = stage.getBoundingClientRect()
-  stage.style.viewTransitionName = morph && r.bottom > 0 && r.top < window.innerHeight ? 'pf-stage' : 'none'
+function nameStage(morph, source) {
+  document.querySelectorAll('[data-stage], [data-stage-source]').forEach((el) => {
+    el.style.viewTransitionName = 'none'
+    el.removeAttribute('data-stage-source')
+  })
+  const el = source && source.isConnected ? source : document.querySelector('[data-stage]')
+  if (!morph || !onScreen(el)) return null
+  el.style.viewTransitionName = 'pf-stage'
+  el.setAttribute('data-stage-source', '')
+  return el
+}
+
+/** The page zooms in toward the pressed element, so the phone reads as coming out of it. */
+function setZoomOrigin(el) {
+  const root = document.documentElement
+  if (!el) {
+    root.style.removeProperty('--pf-ox')
+    root.style.removeProperty('--pf-oy')
+    return
+  }
+  const r = el.getBoundingClientRect()
+  root.style.setProperty('--pf-ox', `${Math.round(r.left + r.width / 2)}px`)
+  root.style.setProperty('--pf-oy', `${Math.round(r.top + r.height / 2)}px`)
 }
 
 function DeviceControls({ onHome }) {
@@ -66,6 +91,16 @@ export default function App() {
   const current = useRef(route)
   current.current = route
   const busy = useRef(false)
+  // The last thing pressed (mouse, touch or keyboard), so a transition into the app can grow out of it.
+  const pressed = useRef({ el: null, at: 0 })
+  useEffect(() => {
+    const onClick = (e) => {
+      const el = e.target instanceof Element ? e.target.closest('[data-stage]') ?? e.target.closest('button, a') : null
+      pressed.current = { el, at: performance.now() }
+    }
+    window.addEventListener('click', onClick, true)
+    return () => window.removeEventListener('click', onClick, true)
+  }, [])
 
   /** Show `next`, with a page transition unless `instant`. */
   const show = useCallback(async (next, { instant = false } = {}) => {
@@ -87,10 +122,14 @@ export default function App() {
     const root = document.documentElement
     root.dataset.nav = directionOf(from, next)
     const morph = viewOf(from) === 'rider' || viewOf(next) === 'rider'
-    nameStage(morph)
+    // Into the app: grow out of what was just pressed. Out of the app: shrink back into the hero map.
+    const recent = performance.now() - pressed.current.at < 1500 ? pressed.current.el : null
+    const into = viewOf(next) === 'rider' && viewOf(from) !== 'rider'
+    const source = nameStage(morph, into ? recent : null)
+    setZoomOrigin(into ? source : null)
     const transition = document.startViewTransition(() => {
       commit()
-      nameStage(morph)
+      nameStage(morph, null)
     })
     // A browser that is not drawing frames (a background tab or window) never takes the "before"
     // picture, so the transition would wait forever. If the page has not switched in 600 ms, switch
@@ -104,6 +143,7 @@ export default function App() {
     }, 600)
     transition.finished.finally(() => {
       window.clearTimeout(fallback)
+      setZoomOrigin(null)
       delete root.dataset.nav
       busy.current = false
     })

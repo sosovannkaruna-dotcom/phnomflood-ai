@@ -9,6 +9,7 @@ gsap.registerPlugin(ScrollTrigger, useGSAP)
 
 import { DEPTHS, VEHICLES } from '../lib/severity'
 import MobileMenu from './MobileMenu'
+import BackToTop from '../shared/BackToTop'
 
 // The live map hero loads after first paint (MapLibre and the route data are large); the photo shows until then.
 const HeroMap = lazy(() => import('./HeroMap'))
@@ -498,6 +499,8 @@ export default function Landing({ onOpen }: Props) {
           </div>
         </section>
       </main>
+
+      <BackToTop />
 
       <footer className="border-t border-white/10 px-4 py-10 sm:px-8">
         <div className="mx-auto flex max-w-[1400px] flex-col gap-6 text-sm text-zinc-400 md:flex-row md:items-start md:justify-between">
