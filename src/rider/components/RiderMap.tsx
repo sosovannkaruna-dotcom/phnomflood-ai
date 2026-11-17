@@ -48,6 +48,8 @@ const PADDING = { top: 210, bottom: 250, left: 44, right: 72 }
 const NO_PADDING = { top: 0, bottom: 0, left: 0, right: 0 }
 /** Navigation camera: tilted, close, heading up, with the rider in the lower part of the screen. */
 const NAV = { zoom: 16.4, pitch: 58 }
+/** Following without a ride (re-centre, or walking with no trip): top-down, north up, rider centred. */
+const FLAT = { zoom: 16, pitch: 0, bearing: 0 }
 const navPadding = (map: MlMap) => {
   const h = map.getContainer().clientHeight
   return { top: Math.round(h * 0.46), bottom: 88, left: 24, right: 24 }
@@ -71,6 +73,8 @@ interface Props {
   progress: number
   /** Turn-by-turn navigation: tilted, heading-up camera that follows the rider */
   navigating: boolean
+  /** Follow the rider top-down and north-up instead of the tilted, heading-up ride camera */
+  flat?: boolean
   /** The rider dragged the map away; the camera stops following until re-centred */
   panned: boolean
   onUserPan: () => void
@@ -103,11 +107,15 @@ const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap(props, ref)
   // Navigation loop: where the puck is gliding, the smoothed camera and puck headings, the ridden fraction.
   const nav = useRef({ frame: 0, hold: 0, from: position, to: position, fromF: progress, toF: progress, t0: 0, dur: 1, camBearing: bearing, puckBearing: bearing, fraction: progress })
 
+  /** The follow camera's bearing and padding: heading-up and low on screen while riding, flat otherwise. */
+  const followView = (map: MlMap, bearing: number) =>
+    latest.current.flat ? { bearing: FLAT.bearing, padding: NO_PADDING } : { bearing, padding: navPadding(map) }
   const flyToRider = (map: MlMap, duration: number) => {
     const at = nav.current.to
+    const flat = latest.current.flat
     nav.current.hold = performance.now() + duration
     nav.current.camBearing = latest.current.bearing
-    map.flyTo({ center: [at[1], at[0]], zoom: NAV.zoom, pitch: NAV.pitch, bearing: latest.current.bearing, padding: navPadding(map), duration, easing: easeInOutCubic, essential: true })
+    map.flyTo({ center: [at[1], at[0]], zoom: flat ? FLAT.zoom : NAV.zoom, pitch: flat ? FLAT.pitch : NAV.pitch, ...followView(map, latest.current.bearing), duration, easing: easeInOutCubic, essential: true })
   }
 
   useImperativeHandle(ref, () => ({
@@ -126,7 +134,7 @@ const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap(props, ref)
       if (latest.current.navigating && !latest.current.panned) {
         const at = puck.current?.at ?? nav.current.to
         nav.current.hold = performance.now() + 300
-        map.easeTo({ zoom, center: [at[1], at[0]], bearing: nav.current.camBearing, padding: navPadding(map), duration: 250 })
+        map.easeTo({ zoom, center: [at[1], at[0]], ...followView(map, nav.current.camBearing), duration: 250 })
       } else map.easeTo({ zoom, duration: 250 })
     },
   }))
@@ -614,7 +622,7 @@ const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap(props, ref)
       n.camBearing += turnBetween(n.camBearing, target) * (calm ? 1 : 0.06)
       p.marker.setRotation(n.puckBearing)
       if (!latest.current.panned && !touching.current && now > n.hold) {
-        map.jumpTo({ center: [at[1], at[0]], bearing: n.camBearing, padding: navPadding(map) })
+        map.jumpTo({ center: [at[1], at[0]], ...followView(map, n.camBearing) })
       }
       drawRoutes(map)
       n.frame = requestAnimationFrame(loop)
@@ -646,6 +654,14 @@ const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap(props, ref)
     fit(map)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [planning, position])
+
+  // Following switches between flat (no ride) and tilted (ride started or stopped while following).
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !ready.current || !navigating || panned) return
+    flyToRider(map, prefersReducedMotion() ? 0 : 900)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.flat])
 
   // Re-centred after a drag: fly back behind the rider.
   useEffect(() => {

@@ -112,8 +112,8 @@ function Rider({ onHome, tour = false }: { onHome: () => void; tour?: boolean })
   const [tourHold, setTourHold] = useState(false)
   // Navigating = a ride in progress: tilted heading-up camera, turn banner, bottom bar.
   const navigating = riding
-  // Live, no ride started: the camera still follows the rider (tilted, heading-up) once they move
-  // or tap the locate button, like a normal map app.
+  // Live, no ride started: the camera still follows the rider once they move or tap the locate
+  // button, top-down and north-up. Only a ride tilts the camera heading-up.
   const [follow, setFollow] = useState(false)
   const mapNav = riding || (live && follow)
   const [panned, setPanned] = useState(false)
@@ -427,6 +427,7 @@ function Rider({ onHome, tour = false }: { onHome: () => void; tour?: boolean })
         bearing={trip.bearing}
         progress={trip.fraction}
         navigating={mapNav}
+        flat={!riding}
         panned={panned}
         onUserPan={() => setPanned(true)}
         glideMs={riding && !live ? RIDE_GLIDE_MS : 900}
