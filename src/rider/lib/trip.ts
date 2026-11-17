@@ -96,9 +96,11 @@ export function riderFraction(preset: Preset, routeId: string): number {
 export const pointAt = (candidate: Candidate, fraction: number) => pointAlong(candidate.path, fraction) as LatLng
 
 /** Compass bearing (degrees) of the route at a fraction, for the heading cone. */
-export function bearingAt(candidate: Candidate, fraction: number): number {
-  const a = pointAt(candidate, Math.max(0, fraction - 0.004))
-  const b = pointAt(candidate, Math.min(1, fraction + 0.004))
+export function bearingAt(candidate: Candidate, fraction: number, windowM?: number): number {
+  // A fixed share of the route (demo), or a few metres either side of the rider (live).
+  const span = windowM && candidate.distanceM > 0 ? windowM / candidate.distanceM : 0.004
+  const a = pointAt(candidate, Math.max(0, fraction - span))
+  const b = pointAt(candidate, Math.min(1, fraction + span))
   const toRad = (d: number) => (d * Math.PI) / 180
   const y = Math.sin(toRad(b[1] - a[1])) * Math.cos(toRad(b[0]))
   const x = Math.cos(toRad(a[0])) * Math.sin(toRad(b[0])) - Math.sin(toRad(a[0])) * Math.cos(toRad(b[0])) * Math.cos(toRad(b[1] - a[1]))
@@ -258,26 +260,57 @@ export function floodAhead(floods: { report: FloodReport; entry: number }[], can
 
 /** Fraction (0–1) along a route of the point nearest to `point`, so a ride continues where the rider is. */
 export function fractionNear(candidate: Candidate, point: LatLng): number {
-  const path = candidate.path
-  let total = 0
-  const cumulative = [0]
-  for (let i = 1; i < path.length; i++) {
-    total += metresBetween(path[i - 1], path[i])
-    cumulative.push(total)
-  }
-  let best = 0
-  let bestDistance = Infinity
-  // Check points every ~25 m along the route for a smooth answer.
-  for (let f = 0; f <= 1.0001; f += Math.min(0.01, 25 / Math.max(total, 1))) {
-    const p = pointAlong(path, f) as LatLng
-    const d = metresBetween(p, point)
-    if (d < bestDistance) {
-      bestDistance = d
-      best = f
-    }
-  }
-  return Math.min(1, best)
+  return projectOnRoute(candidate, point).fraction
 }
+
+// Cumulative metres at each vertex of a route, computed once per route.
+const routeIndex = new WeakMap<Candidate, { cumulative: number[]; total: number }>()
+function indexRoute(candidate: Candidate) {
+  let index = routeIndex.get(candidate)
+  if (!index) {
+    const cumulative = [0]
+    for (let i = 1; i < candidate.path.length; i++) cumulative.push(cumulative[i - 1] + metresBetween(candidate.path[i - 1], candidate.path[i]))
+    index = { cumulative, total: cumulative[cumulative.length - 1] }
+    routeIndex.set(candidate, index)
+  }
+  return index
+}
+
+/**
+ * Where a GPS fix sits on a route: the exact nearest point on its segments (no sampling, so the
+ * rider glides along the road instead of hopping), as a fraction, plus how far off the road it is.
+ * With `near` (the last fraction while riding), a stretch just behind or ahead of the rider wins
+ * over a farther part of the route that happens to pass close by (a loop, a parallel street).
+ */
+export function projectOnRoute(candidate: Candidate, point: LatLng, near: number | null = null): { fraction: number; metres: number } {
+  const path = candidate.path
+  const { cumulative, total } = indexRoute(candidate)
+  if (path.length < 2 || total <= 0) return { fraction: 0, metres: path.length ? metresBetween(path[0], point) : Infinity }
+  // Local flat metres around the fix (plenty accurate over a city).
+  const kx = 111320 * Math.cos((point[0] * Math.PI) / 180)
+  const ky = 110574
+  const lo = near === null ? -Infinity : near * total - 60
+  const hi = near === null ? Infinity : near * total + 400
+  let best = { d: Infinity, along: 0 }
+  let local = { d: Infinity, along: 0 }
+  for (let i = 1; i < path.length; i++) {
+    const ax = (path[i - 1][1] - point[1]) * kx
+    const ay = (path[i - 1][0] - point[0]) * ky
+    const dx = (path[i][1] - point[1]) * kx - ax
+    const dy = (path[i][0] - point[0]) * ky - ay
+    const len2 = dx * dx + dy * dy
+    const t = len2 ? Math.min(1, Math.max(0, -(ax * dx + ay * dy) / len2)) : 0
+    const d = Math.hypot(ax + t * dx, ay + t * dy)
+    const along = cumulative[i - 1] + t * (cumulative[i] - cumulative[i - 1])
+    if (d < best.d) best = { d, along }
+    if (along >= lo && along <= hi && d < local.d) local = { d, along }
+  }
+  const pick = local.d <= best.d + 25 ? local : best
+  return { fraction: Math.min(1, Math.max(0, pick.along / total)), metres: pick.d }
+}
+
+/** Smallest angle between two bearings, 0–180°. */
+export const angleBetween = (a: number, b: number) => Math.abs((((a - b) % 360) + 540) % 360 - 180)
 
 /**
  * A spot ahead of the rider that only the active route uses (furthest from every alternative),

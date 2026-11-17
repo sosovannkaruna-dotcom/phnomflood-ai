@@ -26,6 +26,8 @@ const bearingBetween = (a: LatLng, b: LatLng) => {
 export function useGps(enabled: boolean): Gps {
   const [gps, setGps] = useState<Gps>({ status: enabled ? 'locating' : 'off', point: null, accuracy: null, heading: null, speed: null })
   const last = useRef<{ at: LatLng; heading: number | null } | null>(null)
+  // The point on screen: held still while the rider stands still, so GPS wobble does not wander it.
+  const shown = useRef<LatLng | null>(null)
   useEffect(() => {
     if (!enabled) return
     if (!('geolocation' in navigator)) {
@@ -34,16 +36,24 @@ export function useGps(enabled: boolean): Gps {
     }
     const id = navigator.geolocation.watchPosition(
       (pos) => {
-        const at: LatLng = [pos.coords.latitude, pos.coords.longitude]
+        const fix: LatLng = [pos.coords.latitude, pos.coords.longitude]
+        const speed = pos.coords.speed
+        // Standing still (or crawling): small moves within the fix's own error are noise. Moving (or
+        // once the drift adds up past a few metres), the fix is taken as it is.
+        const wobble = Math.min(8, Math.max(3, (pos.coords.accuracy ?? 10) * 0.4))
+        const still = (speed === null || speed < 1) && shown.current !== null && metresBetween(shown.current, fix) < wobble
+        const at: LatLng = still ? shown.current! : fix
+        shown.current = at
         const prev = last.current
         const device = pos.coords.heading != null && !Number.isNaN(pos.coords.heading) && (pos.coords.speed ?? 0) > 0.8 ? pos.coords.heading : null
         // Without a device heading, the direction between fixes far enough apart; otherwise keep the last one.
         const heading = device ?? (prev && metresBetween(prev.at, at) > 8 ? bearingBetween(prev.at, at) : (prev?.heading ?? null))
         if (!prev || metresBetween(prev.at, at) > 8 || device !== null) last.current = { at, heading }
-        setGps({ status: 'ok', point: at, accuracy: pos.coords.accuracy, heading, speed: pos.coords.speed ?? null })
+        setGps((g) => (still && g.point === at && g.status === 'ok' ? g : { status: 'ok', point: at, accuracy: pos.coords.accuracy, heading, speed: speed ?? null }))
       },
       (err) => setGps((g) => ({ ...g, status: err.code === err.PERMISSION_DENIED ? 'denied' : g.point ? 'ok' : 'unavailable' })),
-      { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 },
+      // maximumAge 0: every fix is new, never a cached repeat (a repeat makes the arrow stall, then jump).
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 },
     )
     // No fix after 8 s (e.g. a desktop browser, or indoors): say so, and keep listening.
     const slow = window.setTimeout(() => setGps((g) => (g.point ? g : { ...g, status: 'unavailable' })), 8000)

@@ -300,6 +300,8 @@ const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap(props, ref)
       touchPitch: true,
     })
     mapRef.current = map
+    // Development only: lets test scripts read the camera (stripped from production builds).
+    if (import.meta.env.DEV) (window as unknown as { __riderMap?: MlMap }).__riderMap = map
     map.on('error', (e) => console.error('[rider map]', e.error?.message ?? e))
     map.on('moveend', () => flipLabels(map))
     // A drag by the rider (not by the camera) pauses following, like any navigation app.
@@ -580,21 +582,38 @@ const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap(props, ref)
   useEffect(() => {
     const p = puck.current
     if (!p || navigating || flow.current.drawnPreset !== latest.current.preset.id) return
-    p.marker.setRotation(bearing)
     const from = p.at
+    const fromBearing = p.marker.getRotation()
+    const turn = turnBetween(fromBearing, bearing)
+    const dur = glideFor()
+    const live = glideMs <= 0
     const started = performance.now()
     let frame = 0
     const step = (now: number) => {
-      const t = Math.min(1, (now - started) / glideMs)
-      const k = 1 - Math.pow(1 - t, 3)
+      const t = Math.min(1, (now - started) / dur)
+      // Live fixes glide at an even pace into the next one; a one-off move eases out.
+      const k = live ? t : 1 - Math.pow(1 - t, 3)
       p.at = [from[0] + (position[0] - from[0]) * k, from[1] + (position[1] - from[1]) * k]
       p.marker.setLngLat([p.at[1], p.at[0]])
+      // The arrow turns smoothly through the turn, not in one snap.
+      p.marker.setRotation(fromBearing + turn * Math.min(1, t * 2.5))
       if (t < 1) frame = requestAnimationFrame(step)
     }
     frame = requestAnimationFrame(step)
     return () => cancelAnimationFrame(frame)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [position, bearing])
+
+  // How long to glide to a new fix. A fixed time (the demo ride), or with glideMs 0 (live GPS) the
+  // real gap since the last fix: the arrow then reaches each fix just as the next one arrives, so it
+  // moves continuously instead of gliding, stopping, and waiting.
+  const lastFix = useRef(0)
+  const glideFor = () => {
+    const now = performance.now()
+    const gap = lastFix.current ? now - lastFix.current : 1000
+    lastFix.current = now
+    return glideMs > 0 ? glideMs : Math.min(2500, Math.max(250, gap * 1.05))
+  }
 
   // Navigating: each new fix starts a linear glide that the frame loop below plays out.
   useEffect(() => {
@@ -605,7 +624,8 @@ const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap(props, ref)
     n.fromF = n.fraction
     n.toF = progress
     n.t0 = performance.now()
-    n.dur = glideMs
+    n.dur = glideFor()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [position, progress, navigating, glideMs])
 
   // Start navigation: tilt and turn the camera behind the rider, then run a per-frame loop that moves

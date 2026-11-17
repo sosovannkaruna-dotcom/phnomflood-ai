@@ -444,7 +444,7 @@ function Rider({ onHome, tour = false }: { onHome: () => void; tour?: boolean })
         flat={!riding}
         panned={panned}
         onUserPan={() => setPanned(true)}
-        glideMs={riding && !live ? RIDE_GLIDE_MS : 900}
+        glideMs={live ? 0 : riding ? RIDE_GLIDE_MS : 900}
         planning={planning}
         floodAt={waterKind}
         onFloodTap={setSelectedId}

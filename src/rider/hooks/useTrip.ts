@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { FloodReport } from '../../shared/types'
 import type { LatLng, Preset, RouteEntry, VehicleId } from '../types'
-import { PRESETS, analyse, bearingAt, divergence, fractionNear, metresBetween, pointAt, riderFraction, safest } from '../lib/trip'
+import { PRESETS, analyse, angleBetween, bearingAt, divergence, pointAt, projectOnRoute, riderFraction, safest } from '../lib/trip'
 
 const RECALC_MS = 1900
 export const VEHICLE_NOUN: Record<VehicleId, string> = { moto: 'motorbike', tuktuk: 'tuk-tuk', car: 'car' }
@@ -45,11 +45,22 @@ export function useTrip(
 
   const gps = options.gps ?? null
   const live = options.override !== undefined
-  // Live: where the real fix sits along the route on screen (also used for turn-by-turn below).
-  const onRoute = useMemo(
-    () => (live && gps && shown && shown.candidate.distanceM > 0 ? fractionNear(shown.candidate, gps) : null),
-    [live, gps, shown],
-  )
+  // Live: where the real fix sits along the route on screen (also used for turn-by-turn below), and
+  // how far off the road it is. While riding, the search starts from the last position on this route.
+  const lastOnRoute = useRef<{ id: string; fraction: number } | null>(null)
+  const riding = rideFraction !== null
+  const projection = useMemo(() => {
+    if (!live || !gps || !shown || shown.candidate.distanceM <= 0) return null
+    const last = lastOnRoute.current
+    const near = riding && last && last.id === shown.candidate.id ? last.fraction : null
+    return projectOnRoute(shown.candidate, gps, near)
+  }, [live, gps, shown, riding])
+  useEffect(() => {
+    lastOnRoute.current = projection && shown ? { id: shown.candidate.id, fraction: projection.fraction } : null
+  }, [projection, shown])
+  const onRoute = projection?.fraction ?? null
+  // Further than this from the road, the rider is not on the route: show the raw fix and real heading.
+  const offRoute = !projection || projection.metres > 30
   // Mid-ride, only routes the rider can still take without turning around: the rider must not have
   // passed the point where they leave the current route (the ride holds still while rerouting, so a
   // split right at the start still counts).
@@ -112,10 +123,19 @@ export function useTrip(
   const position: LatLng = useMemo(() => {
     if (!live) return routePoint
     if (!gps) return routePoint
-    return rideFraction !== null && metresBetween(gps, routePoint) < 40 ? routePoint : gps
-  }, [live, gps, routePoint, rideFraction])
-  const routeBearing = useMemo(() => bearingAt(active.candidate, fraction), [active.candidate, fraction])
-  const bearing = live && rideFraction === null && options.heading != null ? options.heading : routeBearing
+    return riding && !offRoute ? routePoint : gps
+  }, [live, gps, routePoint, riding, offRoute])
+  const routeBearing = useMemo(() => bearingAt(active.candidate, fraction, live ? 15 : undefined), [active.candidate, fraction, live])
+  // The arrow: along the road while riding on the route; the real direction of travel when not
+  // riding, off the route, or clearly heading another way (a turn the route does not take, a U-turn).
+  const heading = options.heading ?? null
+  const bearing = !live
+    ? routeBearing
+    : !riding || offRoute
+      ? (heading ?? routeBearing)
+      : heading !== null && angleBetween(heading, routeBearing) > 70
+        ? heading
+        : routeBearing
 
   const setPreset = useCallback((id: string) => {
     setManualId(null)
