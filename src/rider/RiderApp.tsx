@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
-import { CloudRain, Crosshair as LocateFixed, Minus, NavigationArrow, Plus, SpeakerHigh as Volume2, SpeakerX as VolumeX } from '@phosphor-icons/react'
+import { CloudRain, Crosshair as LocateFixed, Minus, Mountains, NavigationArrow, Plus, SpeakerHigh as Volume2, SpeakerX as VolumeX } from '@phosphor-icons/react'
 import RiderMap, { type RiderMapHandle } from './components/RiderMap'
 import TopHud from './components/TopHud'
 import BottomSheet from './components/BottomSheet'
@@ -20,6 +20,7 @@ import StillThere, { type StillAnswer } from './components/StillThere'
 import { canAsk, markAsked, markMine, updateImpact } from './lib/asked'
 import { useBriefing } from '../services/briefing'
 import { useHotspots } from './hooks/useHotspots'
+import { loadLowGround, lowMetres, type LowGround } from './lib/lowGround'
 import { distanceToPath } from '../lib/geo'
 import { DEPTHS } from '../lib/severity'
 import { reverseName } from '../services/liveRouting'
@@ -101,6 +102,19 @@ function Rider({ onHome, tour = false }: { onHome: () => void; tour?: boolean })
   const [radarChoice, setRadarChoice] = useState<boolean | null>(null)
   const radarOn = live && (radarChoice ?? heavyRain)
   const [radarTime, setRadarTime] = useState<number | null>(null)
+  // Low ground from a terrain model: where water collects before anyone reports it. On by itself in
+  // live heavy rain (the map may have no reports yet); a switch in both versions.
+  const [lowChoice, setLowChoice] = useState<boolean | null>(null)
+  const lowOn = lowChoice ?? (live && heavyRain)
+  const [lowGround, setLowGround] = useState<LowGround | null>(null)
+  useEffect(() => {
+    if (lowOn && !lowGround) void loadLowGround().then(setLowGround)
+  }, [lowOn, lowGround])
+  // How much of the route on screen crosses low ground, for the note in the sheet.
+  const routeLowM = useMemo(
+    () => (lowOn && lowGround && !planning ? lowMetres(lowGround, trip.active.candidate.path) : null),
+    [lowOn, lowGround, planning, trip.active.candidate.path],
+  )
   const spotsShown = live && hotspotState.status === 'ready' && (heavyRain || spotsOn) ? hotspotState.spots : []
   const briefing = useBriefing(lang, live, `${reports.length}:${reports.reduce((s, r) => s + (r.confirmations ?? 0), 0)}`)
   const rainNow = weather.status === 'ready' ? weather.weather.rainNow : 0
@@ -437,6 +451,7 @@ function Rider({ onHome, tour = false }: { onHome: () => void; tour?: boolean })
         hotspots={spotsShown}
         radar={radarOn}
         onRadarFrame={setRadarTime}
+        lowGround={lowOn ? lowGround : null}
       />
 
       {/* Riding through water: the screen edge pulses in the flood's colour */}
@@ -472,6 +487,9 @@ function Rider({ onHome, tour = false }: { onHome: () => void; tour?: boolean })
             <CloudRain weight={radarOn ? 'fill' : 'bold'} className={`h-5 w-5 ${radarOn ? 'text-water' : ''}`} />
           </button>
         )}
+        <button onClick={() => setLowChoice(!lowOn)} aria-pressed={lowOn} aria-label={lowOn ? t('low.hide') : t('low.show')} title={lowOn ? t('low.hide') : t('low.show')} className={control}>
+          <Mountains weight={lowOn ? 'fill' : 'bold'} className={`h-5 w-5 ${lowOn ? 'text-indigo-400' : ''}`} />
+        </button>
         <button onClick={() => setMuted((m) => !m)} aria-pressed={muted} aria-label={muted ? t('controls.unmute') : t('controls.mute')} className={control}>
           {muted ? <VolumeX className="h-5 w-5 text-zinc-500" /> : <Volume2 className="h-5 w-5" />}
         </button>
@@ -516,6 +534,7 @@ function Rider({ onHome, tour = false }: { onHome: () => void; tour?: boolean })
         forecast={weather.status === 'ready' ? weather.weather.series : undefined}
         briefing={live ? briefing : undefined}
         impact={impact}
+        lowGround={lowOn ? { loading: !lowGround, auto: lowChoice === null, routeM: routeLowM } : undefined}
         offline={live ? { savedAt, pending } : undefined}
         spots={live ? { state: hotspotState, shown: spotsShown.length, auto: heavyRain, manual: spotsOn, toggle: () => setSpotsOn((v) => !v) } : undefined}
         live={

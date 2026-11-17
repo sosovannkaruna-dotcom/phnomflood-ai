@@ -8,8 +8,9 @@
 // Public, read-only and cacheable: anyone may call it from any site (CORS *).
 // Docs for people: the Open data page at /#/data.
 
-import { fetchReports, reportsConfigured } from './_lib/reports.js'
+import { fetchReports, reportsConfigured, withConfidence } from './_lib/reports.js'
 import { sendCsv } from './_lib/csv.js'
+import { fetchRain } from './_lib/rain.js'
 
 export const LICENCE = {
   name: 'Open Database License (ODbL) 1.0',
@@ -34,8 +35,11 @@ export default async function handler(req, res) {
   const drainOnly = query.get('drain') === 'blocked'
 
   let reports
+  let rainNow = null
   try {
-    reports = await fetchReports({ hours: Number.isFinite(hours) ? hours : 24, includeCleared })
+    const [rows, rain] = await Promise.all([fetchReports({ hours: Number.isFinite(hours) ? hours : 24, includeCleared }), fetchRain({ timeout: 2500 })])
+    rainNow = rain?.rainNow ?? null
+    reports = withConfidence(rows, rainNow ?? 0)
     if (drainOnly) reports = reports.filter((r) => r.drain_blocked === true)
   } catch {
     return res.status(502).json({ error: 'upstream' })
@@ -54,9 +58,10 @@ export default async function handler(req, res) {
     window_hours: window,
     includes_cleared: includeCleared,
     count: reports.length,
+    rain_now_mm_h: rainNow,
     licence: LICENCE,
     docs: 'https://phnomflood-ai.vercel.app/#/data',
-    note: 'Reports come from riders and may be wrong. depth_cm is an estimate: from the AI photo check when depth_source is photo_ai, otherwise the typical depth for the class.',
+    note: 'Reports come from riders and may be wrong. depth_cm is an estimate: from the AI photo check when depth_source is photo_ai, otherwise the typical depth for the class. confidence (high, medium, low) weighs the photo check, confirmations, time since last seen against the usual drain time, and rain now; confidence_reasons lists what counted.',
   }
 
   if (format === 'json') {

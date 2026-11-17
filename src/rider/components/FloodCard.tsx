@@ -5,6 +5,7 @@ import { useT, type Key } from '../../i18n'
 import type { FloodReport } from '../../shared/types'
 import { clearsIn } from '../lib/trip'
 import { agoText, drainText } from '../lib/format'
+import ConfidenceBadge from './ConfidenceBadge'
 
 interface Props {
   report: FloodReport
@@ -49,6 +50,9 @@ export default function FloodCard({ report, rainNow, bottom, onClose, onConfirm,
             <button onClick={onClose} aria-label={t('sheet.closeSearch')} className="rd-press -mr-1 -mt-1 grid h-8 w-8 shrink-0 place-items-center text-zinc-400">
               <X className="h-4 w-4" />
             </button>
+          </div>
+          <div className="mt-2">
+            <ConfidenceBadge report={report} rainNow={rainNow} detail />
           </div>
           <p className="mt-2 flex items-center gap-1.5 text-sm text-zinc-100">
             <Hourglass className="h-4 w-4 shrink-0 text-zinc-400" />

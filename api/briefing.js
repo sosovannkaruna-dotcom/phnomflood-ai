@@ -8,6 +8,7 @@
 
 import { fetchReports, reportsConfigured } from './_lib/reports.js'
 import { generateJson } from './_lib/gemini.js'
+import { fetchRain } from './_lib/rain.js'
 
 const HEAVY = 7.6
 const TTL_MS = 3 * 60 * 1000
@@ -28,18 +29,6 @@ const SCHEMA = {
   required: ['headline', 'summary', 'areas', 'advice'],
 }
 
-async function fetchRain() {
-  try {
-    const params = new URLSearchParams({ latitude: '11.5564', longitude: '104.9282', current: 'precipitation', hourly: 'precipitation', forecast_hours: '4', timezone: 'Asia/Phnom_Penh' })
-    const res = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`, { signal: AbortSignal.timeout(5000) })
-    if (!res.ok) return null
-    const json = await res.json()
-    const next3h = (json.hourly?.precipitation ?? []).slice(1, 4).reduce((a, b) => a + (b ?? 0), 0)
-    return { rainNow: Number(json.current?.precipitation ?? 0), next3h: Math.round(next3h * 10) / 10 }
-  } catch {
-    return null
-  }
-}
 
 /** Written here, without the model, when no water is reported. */
 function quietBriefing(lang, rain) {

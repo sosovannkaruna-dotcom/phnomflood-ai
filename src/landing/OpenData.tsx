@@ -6,6 +6,7 @@ import BackToTop from '../shared/BackToTop'
 
 // The replay map loads after the page (MapLibre is large).
 const FloodReplay = lazy(() => import('./FloodReplay'))
+const StormReplay = lazy(() => import('./StormReplay'))
 
 /** Blocked-drain watch: where the photo check saw debris blocking a drain, for drainage crews. */
 function DrainWatch() {
@@ -98,6 +99,8 @@ const FIELDS: [string, string][] = [
   ['sangkat, khan', 'Commune and district, when known.'],
   ['lat, lng', 'Where the report was made (WGS 84).'],
   ['confirmations', 'How many other riders said it is still flooded.'],
+  ['confidence', '"high", "medium" or "low": how much to trust the report right now. Weighs the photo check, confirmations, time since anyone last saw it against the usual drain time for that depth, and rain falling now (live feed only).'],
+  ['confidence_reasons', 'What counted, space-separated: photo_agrees, photo_close, photo_disagrees, photo_dry, confirmed, recent, may_have_drained, likely_drained, raining. confidence_score is the same judgement from 0 to 1.'],
   ['reported_at, updated_at, cleared_at', 'ISO 8601 times, UTC.'],
 ]
 
@@ -253,6 +256,19 @@ export default function OpenData({ onHome }: { onHome: () => void }) {
             </div>
           </section>
         )}
+
+        {/* A real storm, replayed from the news report next to what the weather models had */}
+        <section id="storm" aria-label="Storm replay" className="mt-20 scroll-mt-24">
+          <h2 className="font-display text-2xl">Storm replay: 26 February 2026</h2>
+          <p className="mt-2 max-w-[62ch] text-sm leading-relaxed text-zinc-400">
+            A real afternoon in Phnom Penh, step by step from the Khmer Times report that covered it. The first heavy rain in six months flooded four districts in under an hour, while every weather model showed a light shower.
+          </p>
+          <div className="mt-6">
+            <Suspense fallback={<div className="cc-shimmer h-[640px] border border-white/15" />}>
+              <StormReplay />
+            </Suspense>
+          </div>
+        </section>
 
         {/* Flood replay */}
         <section aria-label="Flood replay" className="mt-20">

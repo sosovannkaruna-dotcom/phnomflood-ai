@@ -7,8 +7,25 @@ const KEY = process.env.SUPABASE_ANON_KEY ?? process.env.VITE_SUPABASE_ANON_KEY
 
 export const reportsConfigured = Boolean(BASE && KEY)
 
-// Typical depth for each reported class, in cm (the same values the app uses).
-export const DEPTH_CM = { ankle: 10, knee: 25, waist: 40 }
+/** How much to trust each report now (the same rules as the app), given the rain falling now. */
+export function withConfidence(reports, rainNow = 0, now = Date.now()) {
+  return reports.map((r) => {
+    const c = confidence({
+      depth: r.depth,
+      aiCm: r.depth_source === 'photo_ai' ? r.depth_cm : null,
+      confirmations: r.confirmations,
+      reportedAt: Date.parse(r.reported_at),
+      lastSeenAt: r.confirmations > 0 && r.updated_at ? Date.parse(r.updated_at) : null,
+      rainNow,
+      now,
+    })
+    return { ...r, confidence: c.level, confidence_score: c.score, confidence_reasons: c.reasons.join(' ') }
+  })
+}
+
+import { DEPTH_CM, confidence } from '../../src/lib/confidence.js'
+
+export { DEPTH_CM }
 
 /**
  * Reports from the last `hours` (1-24), newest first. Cleared reports only when asked.

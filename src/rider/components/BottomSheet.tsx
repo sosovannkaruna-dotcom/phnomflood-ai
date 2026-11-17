@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Motorcycle as Bike, Car, Taxi as CarTaxiFront, CaretDown, Check, Clock, Drop, MagnifyingGlass as Search, NavigationArrow, ShieldCheck, Stop, Warning as TriangleAlert, X } from '@phosphor-icons/react'
+import { Motorcycle as Bike, Car, Taxi as CarTaxiFront, CaretDown, Check, Clock, Drop, Mountains, MagnifyingGlass as Search, NavigationArrow, ShieldCheck, Stop, Warning as TriangleAlert, X } from '@phosphor-icons/react'
 import { DEPTHS } from '../../lib/severity'
 import { useT, type Key } from '../../i18n'
 import type { AppMode } from '../../shared/mode'
@@ -14,6 +14,7 @@ import { drainText } from '../lib/format'
 import { departureAdvice } from '../lib/departure'
 import type { RainSlot } from '../hooks/useWeather'
 import BriefingCard from './BriefingCard'
+import ConfidenceBadge from './ConfidenceBadge'
 import type { BriefingState } from '../../services/briefing'
 import type { HotspotState } from '../hooks/useHotspots'
 import type { Impact } from '../lib/asked'
@@ -49,6 +50,8 @@ interface Props {
   impact?: Impact | null
   /** Live: flood-prone spots (predicted from report history) */
   spots?: { state: HotspotState; shown: number; auto: boolean; manual: boolean; toggle: () => void }
+  /** Low ground on the map (terrain model): what the shading means, and how much of the route crosses it */
+  lowGround?: { loading: boolean; auto: boolean; routeM: number | null }
   /** Live mode: search any place instead of the demo's trip list */
   live?: {
     origin: string
@@ -62,7 +65,7 @@ interface Props {
 }
 
 /** Two-detent sheet: riding view when collapsed, route comparison and nearby alerts when expanded. */
-export default function BottomSheet({ trip, reports, position, mode, sync, ride, onStartRide, onStopRide, onReport, onConfirm, onClear, live, rainNow = 0, forecast, briefing, spots, impact, offline }: Props) {
+export default function BottomSheet({ trip, reports, position, mode, sync, ride, onStartRide, onStopRide, onReport, onConfirm, onClear, live, rainNow = 0, forecast, briefing, spots, impact, offline, lowGround }: Props) {
   const { t, lang } = useT()
   const [expanded, setExpanded] = useState(false)
   // Lowest detent: only the handle shows, so the whole map is free. Any change of ride state brings the sheet back.
@@ -258,6 +261,21 @@ export default function BottomSheet({ trip, reports, position, mode, sync, ride,
               </p>
             )}
 
+            {/* Low ground: say what the indigo shading is, every time it shows */}
+            {lowGround && (
+              <p className="flex items-start gap-2 text-xs leading-snug text-zinc-100">
+                <Mountains weight="fill" className="mt-px h-4 w-4 shrink-0 text-indigo-400" />
+                <span>
+                  {lowGround.loading
+                    ? t('low.loading')
+                    : hasRoute && lowGround.routeM !== null && ride === 'idle'
+                      ? t(lowGround.routeM >= 100 ? 'low.route' : 'low.routeNone', { km: (lowGround.routeM / 1000).toFixed(1) })
+                      : t(lowGround.auto ? 'low.auto' : 'low.manual')}{' '}
+                  <span className="text-zinc-500">{t('low.note')}</span>
+                </span>
+              </p>
+            )}
+
             {advice && (
               <p className="flex items-start gap-2 text-xs leading-snug text-zinc-100" aria-live="polite">
                 <Clock weight="bold" className={`mt-px h-4 w-4 shrink-0 ${ADVICE_COLOR[advice.tone]}`} />
@@ -435,6 +453,9 @@ export default function BottomSheet({ trip, reports, position, mode, sync, ride,
                           </span>
                         </p>
                         <p className="mt-0.5 text-xs text-zinc-400">{drainText(t, clearsIn(report, rainNow))}</p>
+                        <div className="mt-1.5">
+                          <ConfidenceBadge report={report} rainNow={rainNow} detail />
+                        </div>
                         <div className="tl-grid mt-3 grid-cols-2 border border-white/[0.12]">
                           <button onClick={() => onConfirm(report.id)} className="rd-press h-12 text-sm font-medium text-zinc-100">
                             {t('sheet.still')}
@@ -479,7 +500,7 @@ export default function BottomSheet({ trip, reports, position, mode, sync, ride,
                   {t('sheet.openData')} <span className="font-mono text-xs text-zinc-500">GeoJSON · CSV</span>
                 </a>
               )}
-              <p className="text-[11px] text-zinc-500">Map data © OpenStreetMap contributors · Map tiles: OpenFreeMap</p>
+              <p className="text-[11px] text-zinc-500">Map data © OpenStreetMap contributors · Map tiles: OpenFreeMap · Terrain: SRTM via AWS Terrain Tiles (Mapzen)</p>
             </div>
           </motion.div>
         )}

@@ -9,7 +9,7 @@
 // Until the flood_history database function exists, this falls back to the last 24 hours.
 
 import { fetchHistory, fetchReports, reportsConfigured } from './_lib/reports.js'
-import { sendCsv } from './_lib/csv.js'
+import { HISTORY_FIELDS, sendCsv } from './_lib/csv.js'
 import { LICENCE } from './reports.js'
 
 export default async function handler(req, res) {
@@ -43,7 +43,7 @@ export default async function handler(req, res) {
   if (drainOnly) reports = reports.filter((r) => r.drain_blocked === true)
 
   res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300')
-  if (format === 'csv') return sendCsv(res, reports, drainOnly ? 'phnomflood-blocked-drains' : 'phnomflood-history')
+  if (format === 'csv') return sendCsv(res, reports, drainOnly ? 'phnomflood-blocked-drains' : 'phnomflood-history', HISTORY_FIELDS)
 
   const to = new Date()
   return res.status(200).json({

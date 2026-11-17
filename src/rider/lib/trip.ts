@@ -2,6 +2,7 @@
 // plus the rider-only geometry: puck position, heading, flood segments on roads.
 
 import { ROUTE_PRESETS as RAW_PRESETS } from '../../data/routes'
+import { drainMinutes } from '../../lib/confidence'
 import { GAZETTEER as RAW_GAZETTEER } from '../../data/gazetteer'
 import { analyseCandidate, etaMinutes } from '../../lib/routing'
 import { distanceToPath, haversine, nearestPlace, pathLength, pointAlong } from '../../lib/geo'
@@ -223,8 +224,7 @@ export const routeLengthKm = (candidate: Candidate) => ((pathLength(candidate.pa
 export function clearsIn(report: FloodReport, rainNow: number, now = Date.now()): number {
   const cm = report.ai?.depthCm ?? DEPTHS[report.depth]?.cm ?? 0
   if (!cm) return 0
-  const rainFactor = rainNow >= 7.6 ? 1.6 : rainNow > 0 ? 1.2 : 1
-  const total = cm * 3.5 * rainFactor
+  const total = drainMinutes(cm, rainNow)
   const age = Math.max(0, (now - report.createdAt) / 60000)
   return Math.max(0, Math.round((total - age) / 5) * 5)
 }

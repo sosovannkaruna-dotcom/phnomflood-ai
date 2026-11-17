@@ -14,6 +14,8 @@ export interface FloodReport {
   createdAt: number
   isNew?: boolean
   confirmations?: number
+  /** Last change in the shared database (a confirmation moves it), ISO time; live reports only */
+  updatedAt?: string
   photo?: string | null
   ai?: { depthCm: number; drainage: { status: string; blocked: boolean; confidence: number } } | null | undefined
 }

@@ -7,6 +7,7 @@ import type { FloodReport } from '../../shared/types'
 import type { LatLng, MapMode, Passability, Preset, RouteEntry } from '../types'
 import { floodSegment, metresBetween, passability } from '../lib/trip'
 import { RADAR_MAX_ZOOM, fetchRadarFrames } from '../../services/radar'
+import { lowGroundCanvas, type LowGround } from '../lib/lowGround'
 
 const STATUS_COLOR: Record<Passability, string> = { dry: '#10B981', caution: '#F59E0B', blocked: '#EF4444' }
 const TRAVELED = '#52525B'
@@ -87,6 +88,8 @@ interface Props {
   onFloodTap?: (reportId: string) => void
   /** Live, heavy rain: places that flooded on two or more days (predicted, drawn apart from reports) */
   hotspots?: { lat: number; lng: number; days: number; deep: number }[]
+  /** Low ground from the terrain model, shaded under the streets; null hides it */
+  lowGround?: LowGround | null
   /** Live: show the animated rain radar */
   radar?: boolean
   /** The radar frame on screen (unix seconds), or null when off or unavailable */
@@ -477,6 +480,30 @@ const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap(props, ref)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.radar])
+
+  // Low ground: the terrain grid as one image under the water and streets (water draws over it).
+  useEffect(() => {
+    const map = mapRef.current
+    const ground = props.lowGround
+    if (!map || !ground) return
+    const add = () => {
+      if (map.getSource('low-ground')) return
+      const [w, s, e, n] = ground.bounds
+      map.addSource('low-ground', { type: 'canvas', canvas: lowGroundCanvas(ground), animate: false, coordinates: [[w, n], [e, n], [e, s], [w, s]] })
+      map.addLayer({ id: 'low-ground', type: 'raster', source: 'low-ground', paint: { 'raster-opacity': 0, 'raster-resampling': 'linear', 'raster-fade-duration': 0 } }, map.getLayer('water') ? 'water' : undefined)
+      map.setPaintProperty('low-ground', 'raster-opacity-transition', { duration: prefersReducedMotion() ? 0 : 400, delay: 0 })
+      requestAnimationFrame(() => map.getLayer('low-ground') && map.setPaintProperty('low-ground', 'raster-opacity', 1))
+    }
+    if (ready.current) add()
+    else map.once('load', add)
+    return () => {
+      map.off('load', add)
+      // On unmount the map is already removed (its effect cleans up first): nothing left to take off.
+      if (!ready.current) return
+      if (map.getLayer('low-ground')) map.removeLayer('low-ground')
+      if (map.getSource('low-ground')) map.removeSource('low-ground')
+    }
+  }, [props.lowGround])
 
   useEffect(() => {
     if (mapRef.current && ready.current) drawHotspots(mapRef.current)

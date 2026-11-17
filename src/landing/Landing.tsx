@@ -509,7 +509,7 @@ export default function Landing({ onOpen }: Props) {
             <p className="leading-relaxed">Built by So Sovannkaruna for the Open Data X AI Venture Hackathon 1.0.</p>
           </div>
           <div className="max-w-[52ch] space-y-2 leading-relaxed">
-            <p>Map data from OpenStreetMap contributors, via OpenFreeMap. Routes computed with OSRM. Rainfall from Open-Meteo.</p>
+            <p>Map data from OpenStreetMap contributors, via OpenFreeMap. Routes computed with OSRM. Rainfall from Open-Meteo. Terrain from SRTM via AWS Terrain Tiles (Mapzen).</p>
             <p>Demo photos: Biplab Sau, Lâm Trần and Dibakar Roy on Pexels. Live photo checks are sent to Google Gemini; PhnomFlood does not store your photos.</p>
           </div>
         </div>
