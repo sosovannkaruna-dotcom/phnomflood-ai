@@ -81,17 +81,48 @@ export function idlePreset(at: LatLng): Preset {
 
 export type RouteStatus = 'idle' | 'routing' | 'ready' | 'error'
 
+// The trip on screen, kept on the phone: a reload with no signal (a dropped connection in a storm
+// often ends in one) still has the route, its turns and the flood check, instead of an error.
+const SAVED_TRIP = 'phnomflood.live.trip'
+const SAVED_TRIP_MS = 3 * 3600 * 1000
+interface SavedTrip {
+  at: number
+  origin: LivePlace | null
+  destination: LivePlace
+  preset: Preset
+}
+function loadTrip(): SavedTrip | null {
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(SAVED_TRIP) ?? 'null') as SavedTrip | null
+    return saved && Date.now() - saved.at < SAVED_TRIP_MS && saved.preset?.candidates?.length ? saved : null
+  } catch {
+    return null
+  }
+}
+function saveTrip(trip: SavedTrip | null) {
+  try {
+    if (trip) window.localStorage.setItem(SAVED_TRIP, JSON.stringify(trip))
+    else window.localStorage.removeItem(SAVED_TRIP)
+  } catch {
+    // Storage full or blocked: the trip just is not kept.
+  }
+}
+
 /**
  * Live trip planning, like a normal map app: start from the real GPS fix (or a searched place),
  * pick any destination, fetch real routes, and fetch a fresh route when the rider leaves it.
  */
 export function useLiveRoute(gps: Gps, unnamed: string, english: boolean) {
-  const [origin, setOrigin] = useState<LivePlace | null>(null) // null = "Your location"
-  const [destination, setDestination] = useState<LivePlace | null>(null)
-  const [preset, setPreset] = useState<Preset | null>(null)
-  const [status, setStatus] = useState<RouteStatus>('idle')
+  const [restored] = useState(loadTrip)
+  const [origin, setOrigin] = useState<LivePlace | null>(restored?.origin ?? null) // null = "Your location"
+  const [destination, setDestination] = useState<LivePlace | null>(restored?.destination ?? null)
+  const [preset, setPreset] = useState<Preset | null>(restored?.preset ?? null)
+  const [status, setStatus] = useState<RouteStatus>(restored ? 'ready' : 'idle')
+  /** The route on screen is the one kept on the phone: a fresh one could not be fetched (no signal) */
+  const [savedRoute, setSavedRoute] = useState(false)
   const [rerouting, setRerouting] = useState(false)
-  const tripId = useRef(0)
+  // Starts from the clock, so a trip restored from the phone never shares ids (and cached geometry) with a new one.
+  const tripId = useRef(Math.floor(Date.now() / 1000))
   const generation = useRef(0)
   const controller = useRef<AbortController | null>(null)
   /** Where the current route was fetched from: the fix can sit off the road there (inside a building) */
@@ -118,6 +149,7 @@ export function useLiveRoute(gps: Gps, unnamed: string, english: boolean) {
         routedFrom.current = from
         setPreset(next)
         setStatus('ready')
+        setSavedRoute(false)
         // English, on a route leaving the built-in list's area: the route shows now, and its remaining
         // Khmer street names switch to English when the Overpass lookup returns.
         if (english && hasKhmerNames(next)) {
@@ -126,7 +158,14 @@ export function useLiveRoute(gps: Gps, unnamed: string, english: boolean) {
           })
         }
       } catch {
-        if (!ctrl.signal.aborted) setStatus('error')
+        if (ctrl.signal.aborted) return
+        // No signal, but this trip's route is on the phone: keep riding it.
+        const kept = loadTrip()
+        if (kept && kept.destination.lat === to.lat && kept.destination.lng === to.lng) {
+          setPreset((p) => p ?? kept.preset)
+          setStatus('ready')
+          setSavedRoute(true)
+        } else setStatus('error')
       } finally {
         if (controller.current === ctrl) setRerouting(false)
       }
@@ -136,9 +175,15 @@ export function useLiveRoute(gps: Gps, unnamed: string, english: boolean) {
 
   // A new start or destination: a new trip.
   useEffect(() => {
-    if (!destination || !start) {
+    if (!destination) {
       setPreset(null)
       setStatus('idle')
+      saveTrip(null)
+      return
+    }
+    // Still locating: keep a route restored from the phone on screen until the fix arrives.
+    if (!start) {
+      if (!preset) setStatus('idle')
       return
     }
     tripId.current += 1
@@ -168,8 +213,13 @@ export function useLiveRoute(gps: Gps, unnamed: string, english: boolean) {
     void fetchRoute(start, origin?.short ?? '', destination, `live-${tripId.current}`)
   }, [destination, start, origin, fetchRoute])
 
+  // Keep the trip on the phone whenever a route arrives.
+  useEffect(() => {
+    if (preset && destination && status === 'ready' && !savedRoute) saveTrip({ at: Date.now(), origin, destination, preset })
+  }, [preset, destination, origin, status, savedRoute])
+
   const idleAt = start ?? fallback
   const idle = useMemo(() => idlePreset(idleAt), [idleAt[0], idleAt[1]]) // eslint-disable-line react-hooks/exhaustive-deps
   const trip = preset ?? idle
-  return { origin, setOrigin, destination, setDestination, preset, trip, status, rerouting, rerouteFrom, retry, hasStart: !!start, fromCentre: !origin && !here && noFix }
+  return { origin, setOrigin, destination, setDestination, preset, trip, status, rerouting, rerouteFrom, retry, hasStart: !!start, fromCentre: !origin && !here && noFix, savedRoute }
 }

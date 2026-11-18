@@ -160,3 +160,113 @@ $$;
 
 revoke all on function public.flood_history(integer) from public;
 grant execute on function public.flood_history(integer) to anon;
+
+-- ── Rider trust and the Telegram bot (added 18 Nov 2026; safe to re-run) ─────────────────────
+-- There are no accounts. Each phone keeps a random secret and sends it with its reports in
+-- device_id. A trigger moves its SHA-256 hash (made here, so a hash cannot be replayed to borrow
+-- someone's standing) into report_devices, which anonymous users cannot read at all, and empties
+-- device_id, so nothing that links reports to a phone is ever public.
+-- A report's trust is set when it is inserted, from that phone's last 90 days:
+--   trusted: 3+ reports, 2+ confirmed by other riders, and a third or fewer cleared within
+--            20 minutes of being reported; regular: any earlier report; new: none.
+-- Trusted reports are believed a little longer and score higher (src/lib/confidence.js).
+-- The Telegram bot (api/telegram-webhook.js) files reports with source 'telegram'.
+create extension if not exists pgcrypto with schema extensions;
+
+alter table public.flood_reports add column if not exists device_id text
+  check (device_id is null or char_length(device_id) between 16 and 128);
+alter table public.flood_reports add column if not exists trust text
+  check (trust is null or trust in ('new', 'regular', 'trusted'));
+alter table public.flood_reports drop constraint if exists flood_reports_source_check;
+alter table public.flood_reports add constraint flood_reports_source_check
+  check (source in ('rider', 'citizen', 'telegram'));
+
+create table if not exists public.report_devices (
+  report_id   text primary key references public.flood_reports (id) on delete cascade,
+  device_hash text not null
+);
+create index if not exists report_devices_hash on public.report_devices (device_hash);
+alter table public.report_devices enable row level security;
+-- No policies: only the functions below (security definer) read or write it.
+
+create or replace function public.device_hash(p_secret text) returns text
+language sql immutable set search_path = public, extensions as $$
+  select case when p_secret is null or char_length(p_secret) < 16 then null
+              else encode(extensions.digest('phnomflood:' || p_secret, 'sha256'), 'hex') end;
+$$;
+
+create or replace function public.trust_by_hash(p_hash text)
+returns table (level text, reports integer, confirmed integer, disputed integer)
+language sql stable security definer set search_path = public as $$
+  with mine as (
+    select r.confirmations, r.cleared_at, r.created_at
+      from public.report_devices d
+      join public.flood_reports r on r.id = d.report_id
+     where d.device_hash = p_hash and p_hash is not null
+       and r.created_at > now() - interval '90 days'
+       and r.id not like 's-%'
+  ), counts as (
+    select count(*)::integer as n,
+           (count(*) filter (where confirmations > 0))::integer as c,
+           (count(*) filter (where cleared_at is not null and cleared_at < created_at + interval '20 minutes'))::integer as d
+      from mine
+  )
+  select case when n >= 3 and c >= 2 and d * 3 <= n then 'trusted' when n >= 1 then 'regular' else 'new' end, n, c, d
+    from counts;
+$$;
+revoke all on function public.trust_by_hash(text) from public;
+
+-- For the report form's badge: a phone asks about itself with its own secret.
+create or replace function public.my_trust(p_secret text)
+returns table (level text, reports integer, confirmed integer, disputed integer)
+language sql stable security definer set search_path = public as $$
+  select * from public.trust_by_hash(public.device_hash(p_secret));
+$$;
+revoke all on function public.my_trust(text) from public;
+grant execute on function public.my_trust(text) to anon;
+
+-- Before insert: set trust from the phone's record and empty device_id; after insert: keep the hash
+-- (the report row must exist first, for the foreign key).
+create or replace function public.set_report_trust() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare
+  h text := public.device_hash(new.device_id);
+begin
+  new.trust := case when h is null then null else (select t.level from public.trust_by_hash(h) t) end;
+  -- Kept for the after-insert trigger only, in a transaction-local setting.
+  perform set_config('phnomflood.device_hash', coalesce(h, ''), true);
+  new.device_id := null;
+  return new;
+end $$;
+create or replace function public.keep_report_device() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare
+  h text := nullif(current_setting('phnomflood.device_hash', true), '');
+begin
+  if h is not null then
+    insert into public.report_devices (report_id, device_hash) values (new.id, h) on conflict do nothing;
+    perform set_config('phnomflood.device_hash', '', true);
+  end if;
+  return null;
+end $$;
+drop trigger if exists flood_reports_trust on public.flood_reports;
+create trigger flood_reports_trust before insert on public.flood_reports
+  for each row execute function public.set_report_trust();
+drop trigger if exists flood_reports_device on public.flood_reports;
+create trigger flood_reports_device after insert on public.flood_reports
+  for each row execute function public.keep_report_device();
+
+-- "Still there" from a phone: a phone cannot confirm its own report (the one-argument version
+-- above stays for app versions that do not send the secret).
+create or replace function public.confirm_report(p_id text, p_secret text) returns void
+language sql security definer set search_path = public as $$
+  update public.flood_reports r
+     set confirmations = confirmations + 1, updated_at = now()
+   where r.id = p_id and r.cleared_at is null and r.created_at > now() - interval '24 hours'
+     and not exists (
+       select 1 from public.report_devices d
+        where d.report_id = r.id and d.device_hash = public.device_hash(p_secret)
+     );
+$$;
+revoke all on function public.confirm_report(text, text) from public;
+grant execute on function public.confirm_report(text, text) to anon;

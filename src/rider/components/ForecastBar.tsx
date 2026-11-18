@@ -68,12 +68,12 @@ export default function ForecastBar({ state, frame, onFrame, bottom, onHeight }:
         </span>
         <span className="flex shrink-0 items-center gap-1.5" aria-hidden>
           {LEGEND.map((l) => (
-            <span key={l.cm} className="flex items-center gap-1 font-mono text-[10px] text-zinc-400">
+            <span key={l.cm} className="flex items-center gap-1 font-mono text-[11px] text-zinc-400">
               <span className="h-2.5 w-2.5" style={{ background: l.color }} />
               {l.cm}
             </span>
           ))}
-          <span className="font-mono text-[10px] text-zinc-500">cm</span>
+          <span className="font-mono text-[11px] text-zinc-500">cm</span>
         </span>
       </div>
       <input

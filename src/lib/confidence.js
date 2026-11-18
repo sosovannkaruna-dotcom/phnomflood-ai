@@ -26,11 +26,63 @@ export function drainMinutes(cm, rainNow = 0) {
 
 /**
  * @typedef {'high' | 'medium' | 'low'} ConfidenceLevel
- * @typedef {'photo_agrees' | 'photo_close' | 'photo_disagrees' | 'photo_dry' | 'confirmed' | 'recent' | 'may_have_drained' | 'likely_drained' | 'raining'} ConfidenceReason
+ * @typedef {'photo_agrees' | 'photo_close' | 'photo_disagrees' | 'photo_dry' | 'confirmed' | 'recent' | 'may_have_drained' | 'likely_drained' | 'raining' | 'trusted_reporter'} ConfidenceReason
+ * @typedef {'new' | 'regular' | 'trusted'} TrustLevel
  */
 
 /**
- * @param {{ depth: 'ankle' | 'knee' | 'waist', aiCm?: number | null, confirmations?: number, reportedAt: number, lastSeenAt?: number | null, rainNow?: number, now?: number }} r
+ * A reporter's standing (set by the database from that phone's past reports, see
+ * supabase/schema.sql): a trusted reporter's water is believed a little longer.
+ */
+const TRUST_HOLD = { new: 1, regular: 1, trusted: 1.25 }
+
+/**
+ * When a rider last saw the water: the report itself, or a later "still there" confirmation.
+ * @param {{ createdAt: number, updatedAt?: string | null, confirmations?: number }} report
+ */
+export function lastSeenOf(report) {
+  const updated = report.confirmations && report.updatedAt ? Date.parse(report.updatedAt) || 0 : 0
+  return Math.max(report.createdAt, updated)
+}
+
+/** The app's report shape → confidence() input. */
+export function confidenceInput(report, rainNow = 0, now = Date.now()) {
+  const aiCm = report.ai?.depthCm
+  return {
+    depth: report.depth,
+    aiCm: typeof aiCm === 'number' ? aiCm : null,
+    confirmations: report.confirmations ?? 0,
+    reportedAt: report.createdAt,
+    lastSeenAt: lastSeenOf(report),
+    rainNow,
+    now,
+    trust: report.trust ?? null,
+  }
+}
+
+const DEPTH_OF_RANK = ['clear', 'ankle', 'knee', 'waist']
+
+/**
+ * How deep a report counts for routing right now. Water drains as pumps and drains catch up, so a
+ * report nobody has confirmed loses weight with time: at full depth until its usual drain time
+ * (drainMinutes; a trusted reporter's a quarter longer), one step shallower until twice that, then
+ * not at all. A "still there" confirmation starts the clock again.
+ * @returns {'ankle' | 'knee' | 'waist' | null} null: likely drained, no longer routed around
+ */
+export function routingDepth(report, rainNow = 0, now = Date.now()) {
+  const rank = RANK[report.depth] ?? 0
+  if (!rank) return null
+  const aiCm = report.ai?.depthCm
+  const cm = typeof aiCm === 'number' && aiCm > 0 ? aiCm : DEPTH_CM[report.depth]
+  const hold = drainMinutes(cm, rainNow) * (TRUST_HOLD[report.trust] ?? 1)
+  const age = (now - lastSeenOf(report)) / 60000
+  if (age <= hold) return report.depth
+  if (age <= hold * 2) return /** @type {'ankle' | 'knee' | 'waist' | null} */ (DEPTH_OF_RANK[rank - 1] === 'clear' ? null : DEPTH_OF_RANK[rank - 1])
+  return null
+}
+
+/**
+ * @param {{ depth: 'ankle' | 'knee' | 'waist', aiCm?: number | null, confirmations?: number, reportedAt: number, lastSeenAt?: number | null, rainNow?: number, now?: number, trust?: TrustLevel | null }} r
  *   lastSeenAt: the last time a rider confirmed it (the report's updated time), if later than reportedAt.
  * @returns {{ level: ConfidenceLevel, score: number, reasons: ConfidenceReason[] }}
  */
@@ -68,11 +120,17 @@ export function confidence(r) {
     reasons.push('confirmed')
   }
 
+  // A phone whose past reports other riders confirmed.
+  if (r.trust === 'trusted') {
+    score += 0.1
+    reasons.push('trusted_reporter')
+  }
+
   // Time since anyone last saw it, against how long water that deep usually takes to drain.
   const seen = Math.max(r.reportedAt, r.lastSeenAt ?? 0)
   const age = (now - seen) / 60000
   const cm = typeof r.aiCm === 'number' && r.aiCm > 0 ? r.aiCm : DEPTH_CM[r.depth] ?? 10
-  const drain = drainMinutes(cm, rain)
+  const drain = drainMinutes(cm, rain) * (TRUST_HOLD[r.trust] ?? 1)
   if (age > drain * 2) {
     score -= 0.35
     reasons.push('likely_drained')

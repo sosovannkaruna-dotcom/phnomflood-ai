@@ -1,19 +1,10 @@
 import { useT, type Key } from '../../i18n'
-import { confidence } from '../../lib/confidence'
+import { confidence, confidenceInput } from '../../lib/confidence'
 import type { FloodReport } from '../../shared/types'
 
 /** Confidence in a report right now, from the shared rules (src/lib/confidence.js). */
 export function reportConfidence(report: FloodReport, rainNow: number, now = Date.now()) {
-  const aiCm = report.ai?.depthCm
-  return confidence({
-    depth: report.depth as 'ankle' | 'knee' | 'waist',
-    aiCm: typeof aiCm === 'number' ? aiCm : null,
-    confirmations: report.confirmations ?? 0,
-    reportedAt: report.createdAt,
-    lastSeenAt: report.confirmations && report.updatedAt ? Date.parse(report.updatedAt) : null,
-    rainNow,
-    now,
-  })
+  return confidence(confidenceInput(report, rainNow, now) as Parameters<typeof confidence>[0])
 }
 
 const BARS = { low: 1, medium: 2, high: 3 } as const

@@ -5,11 +5,13 @@ import '@fontsource-variable/geist-mono'
 import '@fontsource-variable/noto-sans-khmer'
 import './index.css'
 import App from './App'
+import JudgeLayer from './judge/JudgeLayer'
 import { IconContext } from '@phosphor-icons/react'
 
 createRoot(document.getElementById('root')).render(
   <IconContext.Provider value={{ weight: 'bold' }}>
     <App />
+    <JudgeLayer />
   </IconContext.Provider>,
 )
 

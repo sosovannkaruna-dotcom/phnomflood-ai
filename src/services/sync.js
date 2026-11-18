@@ -7,6 +7,8 @@
 // The anon key is public by design: the table's row-level security only allows reading
 // the last 24 hours, inserting new reports, and two narrow functions to confirm or clear one.
 
+import { deviceSecret } from './device'
+
 const URL = import.meta.env.VITE_SUPABASE_URL
 const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
 
@@ -38,6 +40,7 @@ function fromRow(row) {
     depth: row.depth,
     source: row.source,
     ai: row.ai ?? null,
+    trust: row.trust ?? null,
     confirmations: row.confirmations ?? 0,
     createdAt: Date.parse(row.created_at),
     cleared: Boolean(row.cleared_at),
@@ -66,12 +69,22 @@ export async function insertReport(report) {
     depth: report.depth,
     source: report.source === 'citizen' ? 'citizen' : 'rider',
     ai: report.ai ?? null,
+    // The database hashes it, keeps the hash out of public view and empties this field (rider trust).
+    device_id: deviceSecret(),
   }
-  const res = await fetch(`${URL}/rest/v1/flood_reports`, {
-    method: 'POST',
-    headers: { ...headers(), Prefer: 'return=minimal' },
-    body: JSON.stringify(body),
-  })
+  const post = (payload) =>
+    fetch(`${URL}/rest/v1/flood_reports`, {
+      method: 'POST',
+      headers: { ...headers(), Prefer: 'return=minimal' },
+      body: JSON.stringify(payload),
+    })
+  let res = await post(body)
+  // A database without the rider-trust update (supabase/schema.sql) has no device_id column yet:
+  // file the report without it rather than lose it.
+  if (res.status === 400) {
+    const { device_id, ...plain } = body
+    res = await post(plain)
+  }
   if (!res.ok) throw failed(res)
 }
 
@@ -108,5 +121,27 @@ export async function fetchHotspots(days = 90, signal) {
   }))
 }
 
-export const confirmRemote = (id) => rpc('confirm_report', id)
+/** "Still there", sent with this phone's secret so a phone cannot confirm its own report. */
+export async function confirmRemote(id) {
+  const res = await fetch(`${URL}/rest/v1/rpc/confirm_report`, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify({ p_id: id, p_secret: deviceSecret() }),
+  })
+  // Before the rider-trust update the two-argument version does not exist yet.
+  if (res.status === 404) return rpc('confirm_report', id)
+  if (!res.ok) throw failed(res)
+}
+
+/**
+ * This phone's standing as a reporter: { level: 'new' | 'regular' | 'trusted', reports, confirmed,
+ * disputed }, or null when the database has no rider trust yet.
+ */
+export async function fetchMyTrust(signal) {
+  const res = await fetch(`${URL}/rest/v1/rpc/my_trust`, { method: 'POST', headers: headers(), body: JSON.stringify({ p_secret: deviceSecret() }), signal })
+  if (res.status === 404) return null
+  if (!res.ok) throw failed(res)
+  const [row] = await res.json()
+  return row ?? null
+}
 export const clearRemote = (id) => rpc('clear_report', id)

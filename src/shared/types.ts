@@ -18,6 +18,10 @@ export interface FloodReport {
   updatedAt?: string
   photo?: string | null
   ai?: { depthCm: number; drainage: { status: string; blocked: boolean; confidence: number } } | null | undefined
+  /** The reporting phone's standing, set by the database from its past reports (live only) */
+  trust?: 'new' | 'regular' | 'trusted' | null
+  /** Routing only: the depth as reported, when time since anyone saw it has lowered the depth routing uses */
+  reportedDepth?: DepthId
 }
 
 export interface Ticket {

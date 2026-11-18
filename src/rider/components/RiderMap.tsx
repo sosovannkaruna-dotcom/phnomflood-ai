@@ -93,6 +93,10 @@ interface Props {
   lowGround?: LowGround | null
   /** Flood forecast: one frame (now, +15 min … +2 h) drawn as model water under the routes; null hides it */
   forecast?: { result: ForecastResult; frame: number } | null
+  /** Draw the active route in this colour instead of its flood status (judge mode's standard GPS knows no floods) */
+  routeColor?: string
+  /** Hazard tags on the map (judge mode): DESIGN.md's triangle (stalling depth) or square (shallow) beside a mono depth tag */
+  tags?: { id: string; lat: number; lng: number; cm: number; kind: 'danger' | 'caution'; source?: string }[]
   /** Live: show the animated rain radar */
   radar?: boolean
   /** The radar frame on screen (unix seconds), or null when off or unavailable */
@@ -158,7 +162,8 @@ const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap(props, ref)
     const standard = entries[0]
     const others = entries.filter((e) => e.candidate.id !== active.candidate.id)
     const { progress: drawn, visible } = flow.current
-    const color = recalculating ? '#F59E0B' : STATUS_COLOR[passability(active)]
+    // A map with no flood knowledge (judge mode's standard GPS) draws its route in plain Paper: green would claim it is dry.
+    const color = latest.current.routeColor ?? (recalculating ? '#F59E0B' : STATUS_COLOR[passability(active)])
     // Overview only: alternatives (passability mode) and the standard route for comparison.
     ;(map.getSource('alternatives') as GeoJSONSource).setData(
       !navigating && mode === 'passability' ? collection(others.map((e) => ({ type: 'Feature', properties: { color: STATUS_COLOR[passability(e)] }, geometry: lineOf(e.candidate.path) }))) : EMPTY,
@@ -560,6 +565,38 @@ const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap(props, ref)
       source.pause()
     }
   }, [props.forecast])
+
+  // Hazard tags: one marker per tag, made and removed as the list changes.
+  const tagMarkers = useRef(new Map<string, Marker>())
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    const wanted = new Map((props.tags ?? []).map((t) => [t.id, t]))
+    for (const [id, marker] of tagMarkers.current) {
+      if (!wanted.has(id)) {
+        marker.remove()
+        tagMarkers.current.delete(id)
+      }
+    }
+    for (const tag of wanted.values()) {
+      if (tagMarkers.current.has(tag.id)) continue
+      const el = document.createElement('div')
+      el.className = 'rd-hazard is-new'
+      el.dataset.kind = tag.kind
+      el.style.setProperty('--c', tag.kind === 'danger' ? '#EF4444' : '#F59E0B')
+      el.innerHTML = `<i></i><span>${Math.round(tag.cm)}<small>cm</small></span>${tag.source ? `<em>${tag.source.replace(/[<>&]/g, '')}</em>` : ''}`
+      el.setAttribute('role', 'img')
+      el.setAttribute('aria-label', `${Math.round(tag.cm)} cm${tag.source ? `, ${tag.source}` : ''}`)
+      tagMarkers.current.set(tag.id, new maplibregl.Marker({ element: el, anchor: 'left', offset: [-9, 0] }).setLngLat([tag.lng, tag.lat]).addTo(map))
+    }
+  }, [props.tags])
+  useEffect(() => {
+    const markers = tagMarkers.current
+    return () => {
+      markers.forEach((m) => m.remove())
+      markers.clear()
+    }
+  }, [])
 
   useEffect(() => {
     if (mapRef.current && ready.current) drawHotspots(mapRef.current)

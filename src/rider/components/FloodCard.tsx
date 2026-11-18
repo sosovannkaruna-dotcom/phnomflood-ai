@@ -4,7 +4,8 @@ import { DEPTHS } from '../../lib/severity'
 import { useT, type Key } from '../../i18n'
 import type { FloodReport } from '../../shared/types'
 import { clearsIn } from '../lib/trip'
-import { agoText, drainText } from '../lib/format'
+import { drainText } from '../lib/format'
+import ReportStatus from './ReportStatus'
 import ConfidenceBadge from './ConfidenceBadge'
 
 interface Props {
@@ -58,9 +59,12 @@ export default function FloodCard({ report, rainNow, bottom, onClose, onConfirm,
             <Hourglass className="h-4 w-4 shrink-0 text-zinc-400" />
             {drainText(t, clearsIn(report, rainNow))}
           </p>
-          <p className="mt-0.5 text-xs text-zinc-500">
-            {t('flood.reported', { ago: agoText(t, report.createdAt) })}
-            {report.confirmations ? ` · ${t('sheet.confirmed', { n: report.confirmations })}` : ''} · {t('drain.note')}
+          <div className="mt-1.5">
+            <ReportStatus report={report} rainNow={rainNow} />
+          </div>
+          <p className="mt-1 text-xs text-zinc-500">
+            {report.confirmations ? `${t('sheet.confirmed', { n: report.confirmations })} · ` : ''}
+            {t('drain.note')}
           </p>
           <div className="mt-2.5 grid grid-cols-2 gap-px border border-white/[0.12] bg-white/[0.12]">
             <button onClick={() => onConfirm(report.id)} className="rd-press h-10 bg-void text-sm font-medium text-zinc-100">

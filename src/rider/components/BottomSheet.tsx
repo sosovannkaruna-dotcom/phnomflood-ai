@@ -15,6 +15,8 @@ import { departureAdvice } from '../lib/departure'
 import type { RainSlot } from '../hooks/useWeather'
 import BriefingCard from './BriefingCard'
 import ConfidenceBadge from './ConfidenceBadge'
+import ReportStatus from './ReportStatus'
+import { lastSeenOf } from '../../lib/confidence'
 import type { BriefingState } from '../../services/briefing'
 import type { HotspotState } from '../hooks/useHotspots'
 import type { Impact } from '../lib/asked'
@@ -30,7 +32,10 @@ const STATUS_COLOR = { dry: '#10B981', caution: '#F59E0B', blocked: '#EF4444' }
 
 interface Props {
   trip: Trip
+  /** Reports as routing counts them now (shallower, or gone, once nobody has seen the water for a while) */
   reports: FloodReport[]
+  /** Every report, as reported, for the nearby list */
+  allReports?: FloodReport[]
   position: LatLng
   mode: AppMode
   sync: SyncState
@@ -69,7 +74,7 @@ interface Props {
 }
 
 /** Two-detent sheet: riding view when collapsed, route comparison and nearby alerts when expanded. */
-export default function BottomSheet({ trip, reports, position, mode, sync, ride, onStartRide, onStopRide, onReport, onConfirm, onClear, live, rainNow = 0, forecast, briefing, spots, impact, offline, lowGround, floodForecast }: Props) {
+export default function BottomSheet({ trip, reports, allReports, position, mode, sync, ride, onStartRide, onStopRide, onReport, onConfirm, onClear, live, rainNow = 0, forecast, briefing, spots, impact, offline, lowGround, floodForecast }: Props) {
   const { t, lang } = useT()
   const [expanded, setExpanded] = useState(false)
   // Lowest detent: only the handle shows, so the whole map is free. Any change of ride state brings the sheet back.
@@ -127,7 +132,7 @@ export default function BottomSheet({ trip, reports, position, mode, sync, ride,
   // The usual route next to ours: worth showing when reports or the forecast put more water on the usual one.
   const usualWetter = trip.standard.candidate.id !== active.candidate.id && (trip.standard.worst > active.worst || (trip.standard.forecast?.wetM ?? 0) >= (active.forecast?.wetM ?? 0) + 100)
   const matches = trip.presets.filter((p) => `${p.label} ${p.destination.name} ${p.origin.name}`.toLowerCase().includes(query.toLowerCase()))
-  const nearby = reports
+  const nearby = (allReports ?? reports)
     .filter((r) => r.depth !== 'clear')
     .map((r) => ({ report: r, metres: metresBetween(position, [r.lat, r.lng]) }))
     .filter((x) => x.metres <= 2000)
@@ -472,7 +477,7 @@ export default function BottomSheet({ trip, reports, position, mode, sync, ride,
                       <li key={report.id} className="p-3">
                         <div className="flex items-baseline justify-between gap-2">
                           <p className="truncate text-sm font-medium text-zinc-100">{report.name}</p>
-                          <p className="shrink-0 font-mono text-xs text-zinc-400">{ago(report.createdAt)}</p>
+                          <p className="shrink-0 font-mono text-xs text-zinc-400">{ago(lastSeenOf(report))}</p>
                         </div>
                         <p className="mt-1 font-mono text-xs" style={{ color: depth.color }}>
                           ~{report.ai?.depthCm ?? depth.cm} cm · {t(`depth.${report.depth}` as Key)}
@@ -484,6 +489,9 @@ export default function BottomSheet({ trip, reports, position, mode, sync, ride,
                           </span>
                         </p>
                         <p className="mt-0.5 text-xs text-zinc-400">{drainText(t, clearsIn(report, rainNow))}</p>
+                        <div className="mt-1.5">
+                          <ReportStatus report={report} rainNow={rainNow} />
+                        </div>
                         <div className="mt-1.5">
                           <ConfidenceBadge report={report} rainNow={rainNow} detail />
                         </div>

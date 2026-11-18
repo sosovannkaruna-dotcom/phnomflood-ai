@@ -291,6 +291,15 @@ On the Open data page: a dark map with report dots in their depth colour (a soft
 ### Rain Radar
 On the live map, under every route and report: RainViewer's last two hours in its blue scheme at 55% opacity, frames taking turns every 450 ms and holding two seconds on the latest (one still frame under reduced motion). A cloud button among the map controls switches it; a small caption above the sheet names the frame time, the source and that coverage is regional.
 
+### Flood Forecast
+Model water for the next two hours, drawn as a raster under every route and report in a Water ramp that deepens with depth (Water at 27% under 10 cm, 55% to 25 cm, then #3B82F6 at 69% and #2563EB at 80% from 40 cm), so a prediction never reads like the amber and red of a report. A Waves button among the map controls switches it; above the sheet a time bar (square play button, mono time, a hairline range with a 15-minute tick and a square Water handle, a 10/25/40 cm key) and one line saying it is a model, not reports. In the sheet and comparison panel, forecast figures are in Water text.
+
+### Report Status
+Under a report: "Last verified X ago" in mono, and when nobody has confirmed it for a while, an amber-300 line saying routing now counts it shallower or not at all. Source and standing are small square chips with a 15% white edge and an 11px mono label: Telegram (Water paper-plane icon) and Trusted rider (Paper seal icon; standing is not road status, so never emerald).
+
+### Judge Mode
+A full-screen stage view (Shift+D) for pitches on a projector. Two equal map panes on one hairline seam carrying the hazard stripe on end; each pane has an 84 px header (96 px at xl): Archivo title up to 30 px, a status chip in 13–14 px mono, and the ETA in 24–36 px mono. The standard-GPS route is Paper, never a status colour, because that map knows nothing about water; both routes start Paper and PhnomFlood's turns to its status colour at the reroute. A bottom console holds a ruled rain gauge (Water fill, figures inside), the reading in up to 48 px mono, the Hazard Red Cloudburst button, and an event feed whose newest line slides in from the left (280 ms, punch ease). Reported water is a hazard tag (triangle plus mono depth tag, with a Paper source chip). Everything is labelled simulated.
+
 ### Map Marks (signature)
 - **Flood lines:** thin translucent lines in the depth colour along the flooded stretch; no markers or tags on the line itself.
 - **Rider puck:** a Paper dot with a heading cone; while navigating, a flat arrow lying on the road. In water it pulses between Paper and the flood colour, with the flood glow.

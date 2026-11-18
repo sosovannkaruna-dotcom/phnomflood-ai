@@ -60,7 +60,13 @@ function initialState(mode) {
     return { ...freshState('live'), reports: snap?.reports ?? [], savedAt: snap?.at ?? null }
   }
   const saved = loadState(mode)
-  if (mode === 'demo' && saved?.reports?.length && saved?.queue && saved?.seedVersion === SEED_VERSION) return { ...freshState(mode), ...saved }
+  if (mode === 'demo' && saved?.reports?.length && saved?.queue && saved?.seedVersion === SEED_VERSION) {
+    // Seed reports are "N minutes ago" on every visit: reports lose weight with time (routingDepth),
+    // so a demo saved yesterday must not open with every flood already drained.
+    const ages = new Map(SEED_REPORTS.map((r) => [r.id, r.minutesAgo]))
+    const reports = saved.reports.map((r) => (ages.has(r.id) && !r.confirmations ? { ...r, createdAt: minutesAgo(ages.get(r.id)) } : r))
+    return { ...freshState(mode), ...saved, reports }
+  }
   if (mode === 'live' && saved?.reports) return { ...freshState(mode), ...saved }
   return freshState(mode)
 }
@@ -115,8 +121,9 @@ function reducer(state, action) {
           if (existing) reports = reports.filter((r) => r.id !== row.id)
           continue
         }
-        const { cleared, updatedAt, ...report } = row
-        if (existing) reports = reports.map((r) => (r.id === row.id ? { ...r, confirmations: report.confirmations } : r))
+        // updatedAt moves with each "still there", which is when the water was last seen (lastSeenOf).
+        const { cleared, ...report } = row
+        if (existing) reports = reports.map((r) => (r.id === row.id ? { ...r, confirmations: report.confirmations, updatedAt: report.updatedAt } : r))
         else reports = [...reports, { ...report, isNew: !action.initial }]
       }
       return reports === state.reports ? state : { ...state, reports }

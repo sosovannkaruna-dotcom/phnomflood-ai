@@ -93,6 +93,12 @@ export function useTrip(
       setRecalculating(false)
       return
     }
+    // Mid-ride, water draining away (reports losing weight with time, or cleared) never swaps the
+    // route under the rider unannounced; only a block on the route itself does.
+    if (riding && !userChanged && !newReport && !newForecast && shown && !shown.blockers.length) {
+      setRecalculating(false)
+      return
+    }
     if (userChanged || !(newReport || newForecast)) {
       setRecalculating(false)
       setShownId(targetId)

@@ -17,6 +17,7 @@ export function withConfidence(reports, rainNow = 0, now = Date.now()) {
       reportedAt: Date.parse(r.reported_at),
       lastSeenAt: r.confirmations > 0 && r.updated_at ? Date.parse(r.updated_at) : null,
       rainNow,
+      trust: r.reporter_trust ?? null,
       now,
     })
     return { ...r, confidence: c.level, confidence_score: c.score, confidence_reasons: c.reasons.join(' ') }
@@ -82,6 +83,9 @@ function toOpen(row) {
     lat: Math.round(row.lat * 1e6) / 1e6,
     lng: Math.round(row.lng * 1e6) / 1e6,
     confirmations: row.confirmations ?? 0,
+    // rider (the app), citizen, or telegram (the Telegram bot); the reporting phone's standing, when known
+    source: row.source ?? 'rider',
+    reporter_trust: row.trust ?? null,
     reported_at: row.created_at,
     updated_at: row.updated_at,
     cleared_at: row.cleared_at ?? null,

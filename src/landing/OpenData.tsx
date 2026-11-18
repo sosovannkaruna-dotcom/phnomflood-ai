@@ -100,7 +100,9 @@ const FIELDS: [string, string][] = [
   ['lat, lng', 'Where the report was made (WGS 84).'],
   ['confirmations', 'How many other riders said it is still flooded.'],
   ['confidence', '"high", "medium" or "low": how much to trust the report right now. Weighs the photo check, confirmations, time since anyone last saw it against the usual drain time for that depth, and rain falling now (live feed only).'],
-  ['confidence_reasons', 'What counted, space-separated: photo_agrees, photo_close, photo_disagrees, photo_dry, confirmed, recent, may_have_drained, likely_drained, raining. confidence_score is the same judgement from 0 to 1.'],
+  ['confidence_reasons', 'What counted, space-separated: photo_agrees, photo_close, photo_disagrees, photo_dry, confirmed, recent, may_have_drained, likely_drained, raining, trusted_reporter. confidence_score is the same judgement from 0 to 1.'],
+  ['source', '"rider" from the app, "telegram" from the PhnomFlood Telegram bot, "citizen" from older versions.'],
+  ['reporter_trust', '"trusted", "regular" or "new": how often other riders confirmed the reporting phone’s earlier reports (no account or identity behind it). Empty for reports made before it was introduced.'],
   ['reported_at, updated_at, cleared_at', 'ISO 8601 times, UTC.'],
 ]
 

@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { SealCheck as BadgeCheck, Camera, XCircle as CircleX, ImageBroken as ImageOff, CircleNotch as Loader2, Warning as TriangleAlert, UploadSimple as Upload, ArrowRight, X } from '@phosphor-icons/react'
+import { SealCheck as BadgeCheck, Camera, MapPin, XCircle as CircleX, ImageBroken as ImageOff, CircleNotch as Loader2, Warning as TriangleAlert, UploadSimple as Upload, ArrowRight, X } from '@phosphor-icons/react'
 import { DEPTHS } from '../../lib/severity'
 import { DEMO_SCENARIOS, analyzeFloodPhoto } from '../../services/visionAI'
 import { useT, type Key } from '../../i18n'
 import { useMode } from '../../shared/mode'
 import type { DepthId } from '../../shared/types'
 import type { LatLng, Place, VisionResult } from '../types'
+import { provenance, readPhotoMeta, type Provenance } from '../lib/photoMeta'
+import TrustBadge from './TrustBadge'
 
 type ReportDepth = Exclude<DepthId, 'clear'>
 
@@ -51,6 +53,8 @@ export default function ReportDrawer({ place, position, onClose, onSubmit, autop
   const [scanning, setScanning] = useState(false)
   const [step, setStep] = useState(0)
   const [ai, setAi] = useState<VisionResult | null>(null)
+  // Does the photo show this place, now? Only then does its check count for the report.
+  const [prov, setProv] = useState<Provenance | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
   const run = useRef(0)
 
@@ -66,7 +70,12 @@ export default function ReportDrawer({ place, position, onClose, onSubmit, autop
     const id = ++run.current
     setPhoto(next)
     setAi(null)
+    setProv(null)
     setScanning(true)
+    if (input.file) {
+      const file = input.file
+      void readPhotoMeta(file).then((meta) => id === run.current && setProv(provenance(meta, file.lastModified || null, position)))
+    } else setProv(mode === 'live' ? { ok: false, kind: 'sample' } : { ok: true, kind: 'demo' })
     const result = (await analyzeFloodPhoto({ ...input, mode, userDepth: claimed })) as VisionResult
     if (id !== run.current) return
     setAi(result)
@@ -77,6 +86,7 @@ export default function ReportDrawer({ place, position, onClose, onSubmit, autop
     run.current++
     setPhoto(null)
     setAi(null)
+    setProv(null)
     setScanning(false)
   }
 
@@ -98,16 +108,37 @@ export default function ReportDrawer({ place, position, onClose, onSubmit, autop
 
   const verified = ai?.status === 'verified'
   const rejected = ai?.status === 'rejected'
-  const depth: ReportDepth = verified && ai.depth ? ai.depth : claimed
+  // The photo's verdict sets the depth and travels with the report only when the photo is of this place, now.
+  const counts = verified && !!prov?.ok
+  const depth: ReportDepth = counts && ai.depth ? ai.depth : claimed
   const canSubmit = !scanning && !rejected
 
   // Guided tour: once the AI verdict has been on screen long enough to read, submit.
   useEffect(() => {
     if (!autoplay || !ai) return
-    const timer = window.setTimeout(() => onSubmit({ depth: verified && ai.depth ? ai.depth : claimed, ai: verified ? ai : null, photo: photo?.url ?? null }), 3800)
+    const timer = window.setTimeout(() => onSubmit({ depth: counts && ai.depth ? ai.depth : claimed, ai: counts ? ai : null, photo: photo?.url ?? null }), 3800)
     return () => window.clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoplay, ai])
+  const provText = (p: Provenance) => {
+    switch (p.kind) {
+      case 'here':
+        if (p.metres < 0) return t('prov.timeOnly', { n: p.minutes ?? 0 })
+        return p.minutes === null ? t('prov.hereNoTime', { m: p.metres }) : t('prov.hereAgo', { m: p.metres, n: p.minutes })
+      case 'fresh':
+        return t('prov.fresh')
+      case 'demo':
+        return t('prov.demo')
+      case 'far':
+        return t('prov.far', { km: (p.metres / 1000).toFixed(1) })
+      case 'old':
+        return t('prov.old', { h: p.hours })
+      case 'sample':
+        return t('prov.sample')
+      default:
+        return t('prov.unknown')
+    }
+  }
   const depthLabel = (d: ReportDepth) => t(`depth.${d}` as Key)
   const unavailableText = ai?.code === 'not_configured' ? t('ai.notConfigured') : ai?.code === 'demo_upload' ? t('ai.demoUpload') : t('ai.failed')
 
@@ -133,6 +164,7 @@ export default function ReportDrawer({ place, position, onClose, onSubmit, autop
             <p className="mt-1 font-mono text-xs text-zinc-400">
               {position[0].toFixed(5)}, {position[1].toFixed(5)} <span className="text-emerald-400">{t('hud.gps')}</span>
             </p>
+            <TrustBadge />
           </div>
           <button onClick={onClose} aria-label={t('report.close')} className="rd-press grid h-12 w-12 shrink-0 place-items-center border border-white/[0.15] text-zinc-300">
             <X className="h-5 w-5" />
@@ -145,15 +177,15 @@ export default function ReportDrawer({ place, position, onClose, onSubmit, autop
             {PRESETS.map((p) => {
               const color = DEPTHS[p.id].color
               const selected = depth === p.id
-              const overruled = verified && claimed === p.id && ai.depth !== p.id
+              const overruled = counts && claimed === p.id && ai.depth !== p.id
               return (
                 <button
                   key={p.id}
                   role="radio"
                   aria-checked={selected}
-                  disabled={verified}
+                  disabled={counts}
                   onClick={() => setClaimed(p.id)}
-                  className={`rd-press flex min-h-[60px] w-full items-stretch text-left ${verified && !selected ? 'opacity-40' : ''}`}
+                  className={`rd-press flex min-h-[60px] w-full items-stretch text-left ${counts && !selected ? 'opacity-40' : ''}`}
                   style={selected ? { background: `${color}22` } : undefined}
                 >
                   <span className="w-1.5 shrink-0" style={{ background: color }} />
@@ -218,6 +250,14 @@ export default function ReportDrawer({ place, position, onClose, onSubmit, autop
               </div>
               {photo.credit && <p className="text-[11px] text-zinc-500">{t('photo.credit', { credit: photo.credit })}</p>}
 
+              {/* Where and when the photo was taken, against this report */}
+              {prov && (
+                <p className={`flex items-start gap-2 border px-3 py-2 text-xs leading-snug ${prov.ok ? 'border-white/[0.15] text-zinc-200' : 'border-amber-400/40 bg-amber-400/[0.06] text-amber-300'}`} aria-live="polite">
+                  {prov.ok ? <MapPin weight="fill" className="mt-px h-4 w-4 shrink-0 text-emerald-400" /> : <TriangleAlert className="mt-px h-4 w-4 shrink-0" />}
+                  <span>{provText(prov)}</span>
+                </p>
+              )}
+
               {scanning && (
                 <div className="space-y-2 border border-white/[0.15] p-3" aria-hidden>
                   <div className="cc-shimmer h-3 w-3/4" />
@@ -271,7 +311,7 @@ export default function ReportDrawer({ place, position, onClose, onSubmit, autop
         </div>
 
         <div className="shrink-0 border-t border-white/[0.12] p-3">
-          <button disabled={!canSubmit} onClick={() => onSubmit({ depth, ai: verified ? ai : null, photo: photo?.url ?? null })} className="tl-cta h-14 text-base">
+          <button disabled={!canSubmit} onClick={() => onSubmit({ depth, ai: counts ? ai : null, photo: photo?.url ?? null })} className="tl-cta h-14 text-base">
             <span>{rejected ? t('report.rejected') : scanning ? t('report.analyzing') : t('report.submit')}</span>
             <span>{scanning ? <Loader2 className="h-5 w-5 animate-spin" /> : <ArrowRight className="h-5 w-5" />}</span>
           </button>

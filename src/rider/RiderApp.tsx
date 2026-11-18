@@ -21,6 +21,7 @@ import { canAsk, markAsked, markMine, updateImpact } from './lib/asked'
 import { useBriefing } from '../services/briefing'
 import { useHotspots } from './hooks/useHotspots'
 import { loadLowGround, lowMetres, type LowGround } from './lib/lowGround'
+import { routingDepth } from '../lib/confidence'
 import { routeForecast } from './lib/forecast'
 import { useForecast } from './hooks/useForecast'
 import ForecastBar from './components/ForecastBar'
@@ -103,8 +104,29 @@ function Rider({ onHome, tour = false }: { onHome: () => void; tour?: boolean })
   const [fcBarH, setFcBarH] = useState(0)
   const mapForecast = useMemo(() => (fcResult ? { result: fcResult, frame: fcFrame } : null), [fcResult, fcFrame])
 
+  // Reports as routing counts them now: water nobody has confirmed for a while counts shallower, then
+  // not at all (routingDepth in src/lib/confidence.js). Rechecked every minute. The demo's clock stands
+  // still at the storm (its seed reports are always "N minutes ago"), so a long rehearsal never drains the demo.
+  const [clock, setClock] = useState(() => Date.now())
+  useEffect(() => {
+    if (!live) return
+    const timer = window.setInterval(() => setClock(Date.now()), 60000)
+    return () => window.clearInterval(timer)
+  }, [live])
+  const rainNow = weather.status === 'ready' ? weather.weather.rainNow : 0
+  const routed = useMemo(
+    () =>
+      reports.flatMap((r) => {
+        if (r.depth === 'clear') return [r]
+        const depth = routingDepth(r, rainNow, Math.max(clock, live ? 0 : r.createdAt))
+        if (!depth) return []
+        return depth === r.depth ? [r] : [{ ...r, depth, reportedDepth: r.depth }]
+      }),
+    [reports, rainNow, clock, live],
+  )
+
   const trip = useTrip(
-    reports,
+    routed,
     () => addRerouted(24 + Math.floor(Math.random() * 18)),
     ride.status === 'idle' ? null : ride.fraction,
     live ? { override: liveRoute.trip, gps: gps.point, heading: gps.heading, forecast: fcResult } : { presets: demoTrips, forecast: fcResult },
@@ -132,7 +154,6 @@ function Rider({ onHome, tour = false }: { onHome: () => void; tour?: boolean })
   )
   const spotsShown = live && hotspotState.status === 'ready' && (heavyRain || spotsOn) ? hotspotState.spots : []
   const briefing = useBriefing(lang, live, `${reports.length}:${reports.reduce((s, r) => s + (r.confirmations ?? 0), 0)}`)
-  const rainNow = weather.status === 'ready' ? weather.weather.rainNow : 0
   // Depth tags and red / amber hazard markers are always on: they are the warning.
   const mapMode: MapMode = 'depth'
   const [muted, setMuted] = useState(false)
@@ -202,12 +223,12 @@ function Rider({ onHome, tour = false }: { onHome: () => void; tour?: boolean })
   }, [live, moving, ride.status, liveRoute.preset, liveRoute.status, startRide])
 
   // Riding through water (most likely with "Dry only" off, or when no dry route is left).
-  const inWater = useMemo(() => (riding ? floodAt(trip.position, reports) : null), [riding, trip.position, reports])
+  const inWater = useMemo(() => (riding ? floodAt(trip.position, routed) : null), [riding, trip.position, routed])
   const waterKind = inWater ? (DEPTHS[inWater.depth].rank >= 2 ? 'danger' : 'caution') : null
   const lastWater = useRef<string | null>(null)
 
   // Flooded stretch coming up on the active route: warned well before the rider reaches it.
-  const routeFloods = useMemo(() => floodsOnRoute(trip.active.candidate, reports), [trip.active.candidate, reports])
+  const routeFloods = useMemo(() => floodsOnRoute(trip.active.candidate, routed), [trip.active.candidate, routed])
   const ahead = riding && !inWater ? floodAhead(routeFloods, trip.active.candidate, trip.fraction, 700) : null
   const lastAhead = useRef<string | null>(null)
   // Forecast water coming up on the route, at the time the rider will get there (checked every ~0.5 % of the route).
@@ -324,6 +345,8 @@ function Rider({ onHome, tour = false }: { onHome: () => void; tour?: boolean })
       ? t('live.routing')
       : liveRoute.status === 'error'
         ? t('live.routeError')
+        : liveRoute.savedRoute
+          ? t('live.savedRoute')
         : gps.status === 'locating' && !liveRoute.origin
           ? t('live.locating')
           : liveRoute.fromCentre
@@ -467,7 +490,7 @@ function Rider({ onHome, tour = false }: { onHome: () => void; tour?: boolean })
         entries={trip.entries}
         active={trip.active}
         recalculating={trip.recalculating}
-        reports={reports}
+        reports={routed}
         mode={mapMode}
         position={trip.position}
         bearing={trip.bearing}
@@ -559,7 +582,8 @@ function Rider({ onHome, tour = false }: { onHome: () => void; tour?: boolean })
       ) : (
       <BottomSheet
         trip={trip}
-        reports={reports}
+        reports={routed}
+        allReports={reports}
         position={trip.position}
         mode={appMode}
         sync={sync}
