@@ -59,5 +59,7 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react(), localApi(env)],
     server: { port: 5173, open: false, watch: { ignored: ['**/.impeccable/**'] } },
+    // The flood forecast worker loads its terrain grid as a separate chunk, which needs ES module workers.
+    worker: { format: 'es' },
   }
 })

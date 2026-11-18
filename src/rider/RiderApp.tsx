@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
-import { CloudRain, Crosshair as LocateFixed, Minus, Mountains, NavigationArrow, Plus, SpeakerHigh as Volume2, SpeakerX as VolumeX } from '@phosphor-icons/react'
+import { CloudRain, Crosshair as LocateFixed, Minus, Mountains, NavigationArrow, Plus, SpeakerHigh as Volume2, SpeakerX as VolumeX, Waves } from '@phosphor-icons/react'
 import RiderMap, { type RiderMapHandle } from './components/RiderMap'
 import TopHud from './components/TopHud'
 import BottomSheet from './components/BottomSheet'
@@ -21,6 +21,9 @@ import { canAsk, markAsked, markMine, updateImpact } from './lib/asked'
 import { useBriefing } from '../services/briefing'
 import { useHotspots } from './hooks/useHotspots'
 import { loadLowGround, lowMetres, type LowGround } from './lib/lowGround'
+import { routeForecast } from './lib/forecast'
+import { useForecast } from './hooks/useForecast'
+import ForecastBar from './components/ForecastBar'
 import { distanceToPath } from '../lib/geo'
 import { DEPTHS } from '../lib/severity'
 import { reverseName } from '../services/liveRouting'
@@ -82,19 +85,31 @@ function Rider({ onHome, tour = false }: { onHome: () => void; tour?: boolean })
   const gps = useGps(live)
   const liveRoute = useLiveRoute(gps, t('live.unnamed'), lang === 'en')
   const [demoTrips] = useState(() => shuffledTrips(reports))
-  const trip = useTrip(
-    reports,
-    () => addRerouted(24 + Math.floor(Math.random() * 18)),
-    ride.status === 'idle' ? null : ride.fraction,
-    live ? { override: liveRoute.trip, gps: gps.point, heading: gps.heading } : { presets: demoTrips },
-  )
-  const planning = live && !liveRoute.preset
   const weather = useWeather(appMode)
-  // Live: the AI city briefing, refreshed when the reports change
   // Live: flood-prone spots from report history, shown by themselves when heavy rain is falling or forecast.
   const hotspotState = useHotspots(live)
   const [spotsOn, setSpotsOn] = useState(false)
   const heavyRain = weather.status === 'ready' && weather.weather.heavy
+
+  // Flood forecast: where water should stand over the next two hours (rain forecast × terrain,
+  // corrected by reports). On by itself in live heavy rain; a switch in both versions. While it is
+  // on, routes also avoid the water it expects, so what the map shows is what the routing uses.
+  const [fcChoice, setFcChoice] = useState<boolean | null>(null)
+  const fcOn = fcChoice ?? (live && heavyRain)
+  const allSpots = useMemo(() => (hotspotState.status === 'ready' ? hotspotState.spots : []), [hotspotState])
+  const forecast = useForecast(fcOn, weather.status === 'ready' ? weather.weather.series : undefined, reports, allSpots)
+  const fcResult = fcOn && forecast.status === 'ready' ? forecast.result : null
+  const [fcFrame, setFcFrame] = useState(0)
+  const [fcBarH, setFcBarH] = useState(0)
+  const mapForecast = useMemo(() => (fcResult ? { result: fcResult, frame: fcFrame } : null), [fcResult, fcFrame])
+
+  const trip = useTrip(
+    reports,
+    () => addRerouted(24 + Math.floor(Math.random() * 18)),
+    ride.status === 'idle' ? null : ride.fraction,
+    live ? { override: liveRoute.trip, gps: gps.point, heading: gps.heading, forecast: fcResult } : { presets: demoTrips, forecast: fcResult },
+  )
+  const planning = live && !liveRoute.preset
   // Live: what this phone's reports have done (confirmations by other riders), kept across visits.
   const impact = useMemo(() => (live ? updateImpact(reports) : null), [live, reports])
 
@@ -195,6 +210,17 @@ function Rider({ onHome, tour = false }: { onHome: () => void; tour?: boolean })
   const routeFloods = useMemo(() => floodsOnRoute(trip.active.candidate, reports), [trip.active.candidate, reports])
   const ahead = riding && !inWater ? floodAhead(routeFloods, trip.active.candidate, trip.fraction, 700) : null
   const lastAhead = useRef<string | null>(null)
+  // Forecast water coming up on the route, at the time the rider will get there (checked every ~0.5 % of the route).
+  const fcStep = Math.round(trip.fraction * 200)
+  const fcAhead = useMemo(() => {
+    if (!riding || !fcResult) return null
+    const route = trip.active.candidate
+    const first = routeForecast(fcResult, route.path, trip.active.minutes, Date.now(), fcStep / 200).first
+    const metres = first ? Math.round(((first.fraction - fcStep / 200) * route.distanceM) / 10) * 10 : Infinity
+    // Keyed by where the wet stretch is on the route, so the banner stays put while the distance counts down.
+    return first && metres <= 1000 ? { cm: first.cm, metres: Math.max(10, metres), key: Math.round(first.fraction * 50) } : null
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [riding, fcResult, trip.active, fcStep])
 
   // Demo: a rider ahead reports deep water on the active route, once per ride.
   const onScriptedFlood = useCallback(
@@ -279,6 +305,12 @@ function Rider({ onHome, tour = false }: { onHome: () => void; tour?: boolean })
             cm: ahead.report.ai?.depthCm ?? DEPTHS[ahead.report.depth].cm,
           }) + ` · ${drainText(t, clearsIn(ahead.report, rainNow))}`,
           color: DEPTHS[ahead.report.depth].rank >= 2 ? '#EF4444' : '#F59E0B',
+        }
+    : fcAhead
+      ? {
+          id: `fc-${fcAhead.key}`,
+          text: t('fc.ahead', { cm: fcAhead.cm, m: fcAhead.metres >= 1000 ? `${(fcAhead.metres / 1000).toFixed(1)} km` : `${fcAhead.metres} m` }),
+          color: '#38BDF8',
         }
     : riding && !trip.dryOnly && routeWet
       ? { id: 'dry-off', text: t('flood.dryOff'), color: '#F59E0B' }
@@ -452,6 +484,7 @@ function Rider({ onHome, tour = false }: { onHome: () => void; tour?: boolean })
         radar={radarOn}
         onRadarFrame={setRadarTime}
         lowGround={lowOn ? lowGround : null}
+        forecast={mapForecast}
       />
 
       {/* Riding through water: the screen edge pulses in the flood's colour */}
@@ -487,6 +520,9 @@ function Rider({ onHome, tour = false }: { onHome: () => void; tour?: boolean })
             <CloudRain weight={radarOn ? 'fill' : 'bold'} className={`h-5 w-5 ${radarOn ? 'text-water' : ''}`} />
           </button>
         )}
+        <button onClick={() => setFcChoice(!fcOn)} aria-pressed={fcOn} aria-label={fcOn ? t('fc.hide') : t('fc.show')} title={fcOn ? t('fc.hide') : t('fc.show')} className={control}>
+          <Waves weight={fcOn ? 'fill' : 'bold'} className={`h-5 w-5 ${fcOn ? 'text-water' : ''}`} />
+        </button>
         <button onClick={() => setLowChoice(!lowOn)} aria-pressed={lowOn} aria-label={lowOn ? t('low.hide') : t('low.show')} title={lowOn ? t('low.hide') : t('low.show')} className={control}>
           <Mountains weight={lowOn ? 'fill' : 'bold'} className={`h-5 w-5 ${lowOn ? 'text-indigo-400' : ''}`} />
         </button>
@@ -495,9 +531,12 @@ function Rider({ onHome, tour = false }: { onHome: () => void; tour?: boolean })
         </button>
       </div>
 
+      {/* Flood forecast: the time control and what the blue means (hidden while riding; the alerts speak then) */}
+      {fcOn && !navigating && <ForecastBar state={forecast} frame={fcFrame} onFrame={setFcFrame} bottom={panelH} onHeight={setFcBarH} />}
+
       {/* Rain radar caption: which frame is showing, and what it can and cannot show */}
       {radarOn && !navigating && (
-        <p className="pointer-events-none absolute left-3 z-10 max-w-[60%] border border-white/[0.12] bg-void/85 px-2 py-1 text-[11px] leading-snug text-zinc-300" style={{ bottom: panelH + 8 }}>
+        <p className="pointer-events-none absolute left-3 z-10 max-w-[60%] border border-white/[0.12] bg-void/85 px-2 py-1 text-[11px] leading-snug text-zinc-300" style={{ bottom: panelH + 8 + (fcBarH ? fcBarH + 6 : 0) }}>
           {radarTime
             ? t('radar.caption', { time: new Intl.DateTimeFormat(lang === 'km' ? 'km-KH' : 'en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Phnom_Penh' }).format(radarTime * 1000) })
             : t('radar.loading')}
@@ -508,7 +547,7 @@ function Rider({ onHome, tour = false }: { onHome: () => void; tour?: boolean })
       {mapNav && panned && (
         <button
           onClick={() => setPanned(false)}
-          style={{ bottom: panelH + 8 }}
+          style={{ bottom: panelH + 8 + (!navigating && fcBarH ? fcBarH + 6 : 0) }}
           className="rd-press absolute left-3 z-10 flex h-10 items-center gap-2 bg-zinc-100 px-3.5 text-sm font-semibold text-zinc-950 shadow-[0_6px_18px_rgba(0,0,0,0.45)]"
         >
           <NavigationArrow className="h-4 w-4" /> {t('nav.recenter')}
@@ -535,6 +574,7 @@ function Rider({ onHome, tour = false }: { onHome: () => void; tour?: boolean })
         briefing={live ? briefing : undefined}
         impact={impact}
         lowGround={lowOn ? { loading: !lowGround, auto: lowChoice === null, routeM: routeLowM } : undefined}
+        floodForecast={fcOn ? forecast : undefined}
         offline={live ? { savedAt, pending } : undefined}
         spots={live ? { state: hotspotState, shown: spotsShown.length, auto: heavyRain, manual: spotsOn, toggle: () => setSpotsOn((v) => !v) } : undefined}
         live={

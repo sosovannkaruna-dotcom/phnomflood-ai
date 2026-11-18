@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { FloodReport } from '../../shared/types'
 import type { LatLng, Preset, RouteEntry, VehicleId } from '../types'
-import { PRESETS, analyse, angleBetween, bearingAt, divergence, pointAt, projectOnRoute, riderFraction, safest } from '../lib/trip'
+import type { ForecastResult } from '../lib/forecast'
+import { PRESETS, analyse,angleBetween, bearingAt, divergence, pointAt, projectOnRoute, riderFraction, safest } from '../lib/trip'
 
 const RECALC_MS = 1900
 export const VEHICLE_NOUN: Record<VehicleId, string> = { moto: 'motorbike', tuktuk: 'tuk-tuk', car: 'car' }
@@ -25,6 +26,8 @@ export function useTrip(
     /** Live mode: the real GPS fix, which replaces the simulated position */
     gps?: LatLng | null
     heading?: number | null
+    /** The flood forecast, when it is on: routes also avoid water the model expects */
+    forecast?: ForecastResult | null
   } = {},
 ) {
   const list = options.presets ?? PRESETS
@@ -36,7 +39,8 @@ export function useTrip(
 
   const preset = options.override ?? list.find((p) => p.id === presetId) ?? list[0]
   const presetKey = preset.id
-  const entries = useMemo(() => analyse(preset, reports, vehicle), [preset, reports, vehicle])
+  const forecast = options.forecast ?? null
+  const entries = useMemo(() => analyse(preset, reports, vehicle, forecast), [preset, reports, vehicle, forecast])
   const standard = entries[0]
 
   // The route on screen lags the computed one while "recalculating".
@@ -72,7 +76,8 @@ export function useTrip(
   const target: RouteEntry = manual && (!dryOnly || manual.blockers.length === 0) ? manual : dryOnly ? safest(options2) : (options2.includes(standard) ? standard : (shown ?? standard))
   const targetId = target.candidate.id
   const [recalculating, setRecalculating] = useState(false)
-  const previous = useRef({ presetKey, vehicle, dryOnly, manualId, count: reports.length })
+  const forecastAt = forecast?.computedAt ?? 0
+  const previous = useRef({ presetKey, vehicle, dryOnly, manualId, count: reports.length, forecastAt })
   const onReroutedRef = useRef(onRerouted)
   onReroutedRef.current = onRerouted
 
@@ -80,13 +85,15 @@ export function useTrip(
     const prev = previous.current
     const userChanged = prev.presetKey !== presetKey || prev.vehicle !== vehicle || prev.dryOnly !== dryOnly || prev.manualId !== manualId
     const newReport = reports.length > prev.count
-    previous.current = { presetKey, vehicle, dryOnly, manualId, count: reports.length }
+    // A fresh forecast moving the route mid-ride is announced like a new report, never a silent switch.
+    const newForecast = riding && forecastAt !== prev.forecastAt && prev.forecastAt !== 0
+    previous.current = { presetKey, vehicle, dryOnly, manualId, count: reports.length, forecastAt }
 
     if (targetId === shownId) {
       setRecalculating(false)
       return
     }
-    if (userChanged || !newReport) {
+    if (userChanged || !(newReport || newForecast)) {
       setRecalculating(false)
       setShownId(targetId)
       return
@@ -104,7 +111,7 @@ export function useTrip(
     }, RECALC_MS)
     return () => window.clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [targetId, presetKey, vehicle, dryOnly, manualId, reports.length])
+  }, [targetId, presetKey, vehicle, dryOnly, manualId, reports.length, forecastAt])
 
   // Notices clear themselves.
   useEffect(() => {

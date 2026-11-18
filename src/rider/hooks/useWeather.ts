@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { AppMode } from '../../shared/mode'
-import { DEMO_WEATHER, fetchLiveWeather } from '../../services/weather'
+import { DEMO_WEATHER, demoRainSeries, fetchLiveWeather } from '../../services/weather'
 
 export interface Weather {
   simulated: boolean
@@ -13,7 +13,7 @@ export interface Weather {
   chance: number
   heavy: boolean
   observedAt: string | null
-  /** Live only: rain in 15-minute steps for the next six hours (start time, mm/h) */
+  /** Rain in 15-minute steps, the last two hours and the next six (start time, mm/h); demo: the scripted storm */
   series?: RainSlot[]
   /** Live, no signal: when this reading was saved on the phone */
   savedAt?: number
@@ -52,7 +52,7 @@ function save(weather: Weather) {
 
 /** Demo: the scripted storm. Live: Open-Meteo now and every ten minutes. */
 export function useWeather(mode: AppMode): WeatherState {
-  const [state, setState] = useState<WeatherState>(() => (mode === 'demo' ? { status: 'ready', weather: DEMO_WEATHER } : { status: 'loading' }))
+  const [state, setState] = useState<WeatherState>(() => (mode === 'demo' ? { status: 'ready', weather: { ...DEMO_WEATHER, series: demoRainSeries() } } : { status: 'loading' }))
 
   useEffect(() => {
     if (mode === 'demo') return

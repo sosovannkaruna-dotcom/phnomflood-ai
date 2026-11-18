@@ -18,6 +18,19 @@ export const DEMO_WEATHER = {
   observedAt: null,
 }
 
+/**
+ * The demo storm in 15-minute steps (mm/h): building over the last two hours, 32 mm/h now, easing
+ * off over the next two. Built around the current time, so the flood forecast has the same storm
+ * on every visit.
+ */
+export function demoRainSeries(now = Date.now()) {
+  const slot = 15 * 60 * 1000
+  const start = Math.floor(now / slot) * slot
+  const past = [2, 6, 14, 24, 32, 36, 34, 32]
+  const ahead = [28, 22, 15, 9, 5, 2, 1, 0]
+  return [...past, ...ahead].map((mmh, i) => ({ at: start + (i - past.length + 1) * slot, mmh }))
+}
+
 export async function fetchLiveWeather(signal) {
   const params = new URLSearchParams({
     latitude: String(LAT),
@@ -28,6 +41,8 @@ export async function fetchLiveWeather(signal) {
     // 15-minute steps for the next six hours, for "leave now or wait"
     minutely_15: 'precipitation',
     forecast_minutely_15: '24',
+    // and the last two hours, so the flood forecast starts with the rain already on the ground
+    past_minutely_15: '8',
     timezone: 'Asia/Phnom_Penh',
   })
   const res = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`, { signal })

@@ -8,6 +8,7 @@ import type { LatLng, MapMode, Passability, Preset, RouteEntry } from '../types'
 import { floodSegment, metresBetween, passability } from '../lib/trip'
 import { RADAR_MAX_ZOOM, fetchRadarFrames } from '../../services/radar'
 import { lowGroundCanvas, type LowGround } from '../lib/lowGround'
+import { paintFrame, type ForecastResult } from '../lib/forecast'
 
 const STATUS_COLOR: Record<Passability, string> = { dry: '#10B981', caution: '#F59E0B', blocked: '#EF4444' }
 const TRAVELED = '#52525B'
@@ -90,6 +91,8 @@ interface Props {
   hotspots?: { lat: number; lng: number; days: number; deep: number }[]
   /** Low ground from the terrain model, shaded under the streets; null hides it */
   lowGround?: LowGround | null
+  /** Flood forecast: one frame (now, +15 min … +2 h) drawn as model water under the routes; null hides it */
+  forecast?: { result: ForecastResult; frame: number } | null
   /** Live: show the animated rain radar */
   radar?: boolean
   /** The radar frame on screen (unix seconds), or null when off or unavailable */
@@ -506,6 +509,57 @@ const RiderMap = forwardRef<RiderMapHandle, Props>(function RiderMap(props, ref)
       if (map.getSource('low-ground')) map.removeSource('low-ground')
     }
   }, [props.lowGround])
+
+  // Flood forecast: one canvas, repainted for each frame. A static canvas source only uploads a new
+  // picture while "playing", so it plays for two animation frames after each repaint.
+  const forecastCanvas = useRef<HTMLCanvasElement | null>(null)
+  const forecastShown = !!props.forecast
+  const forecastGrid = props.forecast ? props.forecast.result.bounds.join() : ''
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !forecastShown) return
+    const add = () => {
+      if (map.getSource('forecast')) return
+      const f = latest.current.forecast
+      if (!f) return
+      forecastCanvas.current ??= document.createElement('canvas')
+      paintFrame(f.result, f.frame, forecastCanvas.current)
+      const [w, s, e, n] = f.result.bounds
+      map.addSource('forecast', { type: 'canvas', canvas: forecastCanvas.current, animate: false, coordinates: [[w, n], [e, n], [e, s], [w, s]] })
+      map.addLayer({ id: 'forecast', type: 'raster', source: 'forecast', paint: { 'raster-opacity': 0, 'raster-resampling': 'linear', 'raster-fade-duration': 0 } }, map.getLayer('hotspot-disc') ? 'hotspot-disc' : undefined)
+      map.setPaintProperty('forecast', 'raster-opacity-transition', { duration: prefersReducedMotion() ? 0 : 400, delay: 0 })
+      requestAnimationFrame(() => map.getLayer('forecast') && map.setPaintProperty('forecast', 'raster-opacity', 0.9))
+    }
+    if (ready.current) add()
+    else map.once('load', add)
+    return () => {
+      map.off('load', add)
+      if (!ready.current) return
+      if (map.getLayer('forecast')) map.removeLayer('forecast')
+      if (map.getSource('forecast')) map.removeSource('forecast')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [forecastShown, forecastGrid])
+  useEffect(() => {
+    const map = mapRef.current
+    const f = props.forecast
+    const canvas = forecastCanvas.current
+    if (!map || !f || !canvas || !ready.current) return
+    const source = map.getSource('forecast') as (maplibregl.CanvasSource & { play: () => void; pause: () => void }) | undefined
+    if (!source) return
+    paintFrame(f.result, f.frame, canvas)
+    source.play()
+    let second = 0
+    const first = requestAnimationFrame(() => {
+      second = requestAnimationFrame(() => source.pause())
+    })
+    map.triggerRepaint()
+    return () => {
+      cancelAnimationFrame(first)
+      cancelAnimationFrame(second)
+      source.pause()
+    }
+  }, [props.forecast])
 
   useEffect(() => {
     if (mapRef.current && ready.current) drawHotspots(mapRef.current)

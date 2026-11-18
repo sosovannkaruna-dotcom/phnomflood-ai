@@ -1,4 +1,5 @@
 import type { DepthId, FloodReport } from '../shared/types'
+import type { RouteForecast } from './lib/forecast'
 
 export type VehicleId = 'moto' | 'tuktuk' | 'car'
 export type MapMode = 'depth' | 'passability'
@@ -37,6 +38,8 @@ export interface RouteEntry {
   cautions: FloodReport[]
   /** Deepest water anywhere on the route, depth rank 0 (dry) to 3 (waist) */
   worst: number
+  /** Flood forecast along the route, each point at the time the rider would reach it (when the forecast is on) */
+  forecast?: RouteForecast
 }
 
 export type Passability = 'dry' | 'caution' | 'blocked'

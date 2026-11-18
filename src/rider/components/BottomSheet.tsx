@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Motorcycle as Bike, Car, Taxi as CarTaxiFront, CaretDown, Check, Clock, Drop, Mountains, MagnifyingGlass as Search, NavigationArrow, ShieldCheck, Stop, Warning as TriangleAlert, X } from '@phosphor-icons/react'
+import { Motorcycle as Bike, Car, Taxi as CarTaxiFront, CaretDown, Check, Clock, Drop, Mountains, MagnifyingGlass as Search, NavigationArrow, ShieldCheck, Stop, Warning as TriangleAlert, Waves, X } from '@phosphor-icons/react'
 import { DEPTHS } from '../../lib/severity'
 import { useT, type Key } from '../../i18n'
 import type { AppMode } from '../../shared/mode'
@@ -8,7 +8,7 @@ import type { FloodReport, SyncState } from '../../shared/types'
 import type { LatLng, RouteEntry, VehicleId } from '../types'
 import type { Trip } from '../hooks/useTrip'
 import type { RideStatus } from '../hooks/useRide'
-import { clearsIn, floodsOnRoute, metresBetween, passability, routeLengthKm, routeSteps } from '../lib/trip'
+import { clearsIn, floodsOnRoute, metresBetween, passability, placeAt, routeLengthKm, routeSteps } from '../lib/trip'
 import type { RouteStatus } from '../hooks/useLive'
 import { drainText } from '../lib/format'
 import { departureAdvice } from '../lib/departure'
@@ -18,6 +18,8 @@ import ConfidenceBadge from './ConfidenceBadge'
 import type { BriefingState } from '../../services/briefing'
 import type { HotspotState } from '../hooks/useHotspots'
 import type { Impact } from '../lib/asked'
+import type { ForecastState } from '../hooks/useForecast'
+
 
 const VEHICLES: { id: VehicleId; Icon: typeof Bike }[] = [
   { id: 'moto', Icon: Bike },
@@ -52,6 +54,8 @@ interface Props {
   spots?: { state: HotspotState; shown: number; auto: boolean; manual: boolean; toggle: () => void }
   /** Low ground on the map (terrain model): what the shading means, and how much of the route crosses it */
   lowGround?: { loading: boolean; auto: boolean; routeM: number | null }
+  /** Flood forecast, when on: what it expects on this route (or in the city before a route is chosen) */
+  floodForecast?: ForecastState
   /** Live mode: search any place instead of the demo's trip list */
   live?: {
     origin: string
@@ -65,7 +69,7 @@ interface Props {
 }
 
 /** Two-detent sheet: riding view when collapsed, route comparison and nearby alerts when expanded. */
-export default function BottomSheet({ trip, reports, position, mode, sync, ride, onStartRide, onStopRide, onReport, onConfirm, onClear, live, rainNow = 0, forecast, briefing, spots, impact, offline, lowGround }: Props) {
+export default function BottomSheet({ trip, reports, position, mode, sync, ride, onStartRide, onStopRide, onReport, onConfirm, onClear, live, rainNow = 0, forecast, briefing, spots, impact, offline, lowGround, floodForecast }: Props) {
   const { t, lang } = useT()
   const [expanded, setExpanded] = useState(false)
   // Lowest detent: only the handle shows, so the whole map is free. Any change of ride state brings the sheet back.
@@ -108,6 +112,20 @@ export default function BottomSheet({ trip, reports, position, mode, sync, ride,
     return () => window.removeEventListener('keydown', onKey)
   }, [expanded])
   const ADVICE_COLOR = { go: 'text-emerald-400', wait: 'text-amber-400', warn: 'text-flare' }
+  const clock = new Intl.DateTimeFormat(lang === 'km' ? 'km-KH' : 'en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Phnom_Penh' })
+  // Flood forecast note: on this route, at the time the rider would get to each point; with no route, the city.
+  const forecastNote = (() => {
+    if (!floodForecast || floodForecast.status === 'off') return null
+    if (floodForecast.status === 'loading') return t('fc.loading')
+    if (floodForecast.status === 'error') return t('fc.error')
+    if (hasRoute && ride === 'idle' && active.forecast) {
+      const first = active.forecast.first
+      return first ? t('fc.route', { cm: first.cm, place: placeAt([first.lat, first.lng]).name, time: clock.format(first.at) }) : t('fc.routeDry')
+    }
+    return t(floodForecast.result.wetCells.some((n) => n > 0) ? 'fc.city' : 'fc.cityDry')
+  })()
+  // The usual route next to ours: worth showing when reports or the forecast put more water on the usual one.
+  const usualWetter = trip.standard.candidate.id !== active.candidate.id && (trip.standard.worst > active.worst || (trip.standard.forecast?.wetM ?? 0) >= (active.forecast?.wetM ?? 0) + 100)
   const matches = trip.presets.filter((p) => `${p.label} ${p.destination.name} ${p.origin.name}`.toLowerCase().includes(query.toLowerCase()))
   const nearby = reports
     .filter((r) => r.depth !== 'clear')
@@ -214,7 +232,7 @@ export default function BottomSheet({ trip, reports, position, mode, sync, ride,
             </div>
 
             {/* Before Start: the usual map route next to ours, so the difference is plain in five seconds */}
-            {hasRoute && ride === 'idle' && trip.standard.candidate.id !== active.candidate.id && trip.standard.worst > active.worst && (
+            {hasRoute && ride === 'idle' && usualWetter && (
               <button onClick={() => setExpanded(true)} className="rd-press grid w-full grid-cols-2 gap-px border border-white/[0.12] bg-white/[0.12] text-left">
                 {[
                   { label: t('compare.usual'), entry: trip.standard, ours: false },
@@ -223,6 +241,8 @@ export default function BottomSheet({ trip, reports, position, mode, sync, ride,
                   const floods = floodsOnRoute(entry.candidate, reports)
                   const deepest = Math.max(0, ...floods.map((f) => f.report.ai?.depthCm ?? DEPTHS[f.report.depth].cm))
                   const deep = floods.some((f) => DEPTHS[f.report.depth].rank >= 2)
+                  // With the forecast on: metres it expects under water, in the model's blue, on a line of its own.
+                  const predicted = entry.forecast?.first ? Math.max(10, Math.round(entry.forecast.wetM / 10) * 10) : 0
                   return (
                     <span key={label} className={`flex min-w-0 flex-col px-2.5 py-1.5 ${ours ? 'bg-emerald-500/[0.08]' : 'bg-void'}`}>
                       <span className="tl-label truncate">{label}</span>
@@ -232,6 +252,7 @@ export default function BottomSheet({ trip, reports, position, mode, sync, ride,
                           {floods.length ? t('compare.floods', { n: floods.length, cm: deepest }) : t('compare.dry')}
                         </span>
                       </span>
+                      {entry.forecast && <span className={`truncate text-[11px] ${predicted ? 'text-water' : 'text-zinc-500'}`}>{t(predicted ? 'fc.compare' : 'fc.compareDry', { m: predicted })}</span>}
                     </span>
                   )
                 })}
@@ -272,6 +293,16 @@ export default function BottomSheet({ trip, reports, position, mode, sync, ride,
                       ? t(lowGround.routeM >= 100 ? 'low.route' : 'low.routeNone', { km: (lowGround.routeM / 1000).toFixed(1) })
                       : t(lowGround.auto ? 'low.auto' : 'low.manual')}{' '}
                   <span className="text-zinc-500">{t('low.note')}</span>
+                </span>
+              </p>
+            )}
+
+            {/* Flood forecast: what the blue on the map means for this route */}
+            {forecastNote && (
+              <p className="flex items-start gap-2 text-xs leading-snug text-zinc-100" aria-live="polite">
+                <Waves weight="fill" className="mt-px h-4 w-4 shrink-0 text-water" />
+                <span>
+                  {forecastNote} <span className="text-zinc-500">{t('fc.estimate')}</span>
                 </span>
               </p>
             )}

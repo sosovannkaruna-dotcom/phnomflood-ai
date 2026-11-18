@@ -10,16 +10,34 @@ import { DEPTHS } from '../../lib/severity'
 import type { FloodReport } from '../../shared/types'
 import type { Candidate, FloodSegment, LatLng, Maneuver, Passability, Place, Preset, RouteEntry, VehicleId } from '../types'
 import { MANEUVERS } from '../data/maneuvers'
+import { rankOfCm, routeForecast, type ForecastResult } from './forecast'
 
 export const PRESETS = RAW_PRESETS as unknown as Preset[]
 const GAZETTEER = RAW_GAZETTEER as Place[]
 
-export function analyse(preset: Preset, reports: FloodReport[], vehicle: VehicleId): RouteEntry[] {
+/**
+ * Each route option against the reports for a vehicle. With a flood forecast, also the water the
+ * model expects along it, each point checked at the time the rider would get there.
+ */
+export function analyse(preset: Preset, reports: FloodReport[], vehicle: VehicleId, forecast: ForecastResult | null = null): RouteEntry[] {
   return preset.candidates.map((candidate) => {
     const { blockers, cautions } = analyseCandidate(candidate, reports, vehicle) as { blockers: FloodReport[]; cautions: FloodReport[] }
-    return { candidate, minutes: etaMinutes(candidate, vehicle) as number, blockers, cautions, worst: worstDepth(candidate, reports) }
+    const minutes = etaMinutes(candidate, vehicle) as number
+    const entry: RouteEntry = { candidate, minutes, blockers, cautions, worst: worstDepth(candidate, reports) }
+    if (forecast) entry.forecast = routeForecast(forecast, candidate.path, minutes, forecast.times[0])
+    return entry
   })
 }
+
+/** Forecast water on a route, as a depth rank (0 dry … 3 waist). */
+export const forecastRank = (entry: RouteEntry) => (entry.forecast ? rankOfCm(entry.forecast.worstCm) : 0)
+
+/**
+ * A route's time with the forecast water counted against it. The forecast is a model, so unlike
+ * reported water it never rules a route out: each depth step costs 4 minutes, and every 200 m in
+ * ankle-deep water or more one minute, so a slightly longer route the model keeps dry wins.
+ */
+export const forecastCost = (entry: RouteEntry) => entry.minutes + (entry.forecast ? 4 * forecastRank(entry) + entry.forecast.wetM / 200 : 0)
 
 /** Deepest water anywhere on a route (depth rank 0–3), whatever the vehicle. */
 function worstDepth(candidate: Candidate, reports: FloodReport[]): number {
@@ -60,9 +78,11 @@ export const passability = (entry: RouteEntry): Passability => (entry.blockers.l
  * The route with the shallowest water: never one with deeper water than another option
  * (ankle never becomes knee). Among equally shallow routes, the quickest.
  * If every route is blocked, the one with the shallowest worst flood.
+ * Water riders reported comes first; with the forecast on, time comes with the water the model
+ * expects counted against it (forecastCost), so a route it keeps dry can beat a quicker wet one.
  */
 export function safest(entries: RouteEntry[]): RouteEntry {
-  const byDepth = (a: RouteEntry, b: RouteEntry) => a.worst - b.worst || a.minutes - b.minutes || a.cautions.length - b.cautions.length
+  const byDepth = (a: RouteEntry, b: RouteEntry) => a.worst - b.worst || forecastCost(a) - forecastCost(b) || a.cautions.length - b.cautions.length
   const dry = entries.filter((e) => e.blockers.length === 0).sort(byDepth)
   return dry[0] ?? [...entries].sort((a, b) => a.worst - b.worst || a.blockers.length - b.blockers.length || a.minutes - b.minutes)[0]
 }

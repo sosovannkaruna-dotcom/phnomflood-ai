@@ -1071,3 +1071,49 @@ html[lang='km'] .tl-title {
 .rd-root.is-nav .maplibregl-ctrl-bottom-right {
   bottom: calc(118px + env(safe-area-inset-bottom, 0px));
 }
+
+/* Flood forecast time scrubber: a flat hairline track with a tick per 15 minutes, a square thumb */
+.fc-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 22px;
+  margin: 0;
+  padding: 0 10px;
+  background:
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.28) 0 1px, transparent 1px calc((100% - 20px) / 8)) 10px 7px / calc(100% - 19px) 8px no-repeat,
+    linear-gradient(rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.18)) 10px 11px / calc(100% - 20px) 1px no-repeat;
+  cursor: pointer;
+  touch-action: none;
+}
+.fc-range:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+.fc-range::-webkit-slider-runnable-track {
+  height: 22px;
+  background: transparent;
+}
+.fc-range::-moz-range-track {
+  height: 22px;
+  background: transparent;
+}
+.fc-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 16px;
+  margin-top: 3px;
+  background: #38bdf8;
+  border: 2px solid #0a0a0b;
+  border-radius: 0;
+}
+.fc-range::-moz-range-thumb {
+  width: 12px;
+  height: 16px;
+  background: #38bdf8;
+  border: 2px solid #0a0a0b;
+  border-radius: 0;
+}
+.fc-range:focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: -2px;
+}
